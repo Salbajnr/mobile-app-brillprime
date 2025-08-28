@@ -6,7 +6,7 @@ export function WebHeader() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-6">
-        <Link href="/">
+        <Link href="/web">
           <WebLogo />
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
@@ -22,7 +22,7 @@ export function WebHeader() {
         </nav>
         <div className="flex items-center gap-4">
           <Button variant="ghost" asChild>
-            <Link href="/admin/login">Login</Link>
+            <Link href="/signin">Login</Link>
           </Button>
           <Button asChild className="rounded-full">
             <Link href="/signup">Sign Up</Link>
