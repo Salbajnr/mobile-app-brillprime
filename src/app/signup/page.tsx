@@ -11,27 +11,60 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { WebLogo } from '@/components/web/web-logo';
 import { User, Mail, Lock } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useFormState, useFormStatus } from 'react-dom';
+import { signUp } from './actions';
+import { useEffect, useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 const socialLogins = [
     { name: 'Google', icon: 'https://picsum.photos/24/24?random=1', hint: 'Google logo' },
     { name: 'Apple', icon: 'https://picsum.photos/24/24?random=2', hint: 'Apple logo' },
     { name: 'Facebook', icon: 'https://picsum.photos/24/24?random=3', hint: 'Facebook logo' },
-]
+];
+
+const initialState = {
+  message: '',
+};
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" className="w-full rounded-full py-6 text-lg bg-primary text-primary-foreground hover:bg-primary/90" disabled={pending}>
+          {pending ? "Creating Account..." : "Sign Up"}
+        </Button>
+    )
+}
 
 export default function SignupPage() {
   const router = useRouter();
+  const [state, formAction] = useFormState(signUp, initialState);
+  const [role, setRole] = useState<string | null>(null);
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    // Client-side check for the selected role
+    const selectedRole = localStorage.getItem('selectedAccountType');
+    if(selectedRole) {
+      setRole(selectedRole);
+    } else {
+      // Default to consumer or redirect if no role is selected
+      setRole('CONSUMER');
+    }
+  }, []);
 
-  const handleSignUp = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, you'd handle form submission here.
-    // For now, we'll just navigate to the verification page.
-    router.push('/verify-otp');
-  };
+  useEffect(() => {
+    if (state.message) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: state.message,
+      });
+    }
+  }, [state, toast]);
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-gray-50 p-4">
@@ -41,47 +74,52 @@ export default function SignupPage() {
             <WebLogo />
           </div>
           <CardTitle className="text-center text-2xl font-bold text-[hsl(var(--foreground))]">
-            Create an Account
+            Create a <span className='capitalize'>{role?.toLowerCase()}</span> Account
           </CardTitle>
           <CardDescription className="text-center text-muted-foreground">
             Join BrillPrime to access smart services.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4" onSubmit={handleSignUp}>
+          <form action={formAction} className="space-y-4">
+            <input type="hidden" name="role" value={role || 'CONSUMER'} />
             <div className="relative">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 id="fullName"
+                name="fullName"
                 type="text"
                 placeholder="Full Name"
                 required
                 className="rounded-full pl-12 py-6"
               />
+              {state?.errors?.fullName && <p className="text-sm text-destructive mt-1 pl-4">{state.errors.fullName[0]}</p>}
             </div>
              <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 id="email"
+                name="email"
                 type="email"
                 placeholder="Email"
                 required
                 className="rounded-full pl-12 py-6"
               />
+               {state?.errors?.email && <p className="text-sm text-destructive mt-1 pl-4">{state.errors.email[0]}</p>}
             </div>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input 
-                id="password" 
+                id="password"
+                name="password" 
                 type="password" 
                 required 
                 placeholder="Password"
                 className="rounded-full pl-12 py-6" 
                 />
+              {state?.errors?.password && <p className="text-sm text-destructive mt-1 pl-4">{state.errors.password[0]}</p>}
             </div>
-            <Button type="submit" className="w-full rounded-full py-6 text-lg bg-primary text-primary-foreground hover:bg-primary/90">
-              Sign Up
-            </Button>
+            <SubmitButton />
           </form>
 
            <div className="mt-4 text-center text-sm text-muted-foreground">
