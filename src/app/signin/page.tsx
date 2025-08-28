@@ -11,13 +11,21 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WebLogo } from '@/components/web/web-logo';
+import { Mail, Lock } from 'lucide-react';
+import Image from 'next/image';
+
+const socialLogins = [
+    { name: 'Google', icon: 'https://picsum.photos/24/24?random=1', hint: 'Google logo' },
+    { name: 'Apple', icon: 'https://picsum.photos/24/24?random=2', hint: 'Apple logo' },
+    { name: 'Facebook', icon: 'https://picsum.photos/24/24?random=3', hint: 'Facebook logo' },
+]
 
 export default function SigninPage() {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-sm rounded-3xl shadow-lg">
         <CardHeader>
-          <div className="mx-auto mb-4">
+          <div className="mx-auto mb-2">
             <WebLogo />
           </div>
           <CardTitle className="text-center text-2xl font-bold text-[hsl(var(--foreground))]">
@@ -29,19 +37,27 @@ export default function SigninPage() {
         </CardHeader>
         <CardContent>
           <form className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                required
-                className="rounded-xl"
-              />
+             <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                    id="email"
+                    type="email"
+                    placeholder="Email"
+                    required
+                    className="rounded-full pl-12 py-6"
+                />
             </div>
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
+             <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input 
+                    id="password" 
+                    type="password" 
+                    required 
+                    placeholder="Password"
+                    className="rounded-full pl-12 py-6" 
+                />
+            </div>
+             <div className="flex items-center">
                 <Link
                   href="#"
                   className="ml-auto inline-block text-sm text-primary underline"
@@ -49,16 +65,29 @@ export default function SigninPage() {
                   Forgot password?
                 </Link>
               </div>
-              <Input id="password" type="password" required className="rounded-xl" />
-            </div>
-            <Button type="submit" className="w-full rounded-3xl bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button type="submit" className="w-full rounded-full py-6 text-lg bg-primary text-primary-foreground hover:bg-primary/90">
               Sign In
             </Button>
           </form>
-           <div className="mt-4 text-center text-sm">
+
+            <div className="my-6 flex items-center">
+                <div className="flex-1 border-t"></div>
+                <span className="px-2 text-sm text-muted-foreground">or continue with</span>
+                <div className="flex-1 border-t"></div>
+            </div>
+
+            <div className="flex justify-center space-x-4">
+                {socialLogins.map(social => (
+                    <Button key={social.name} variant="outline" size="icon" className="w-14 h-14 rounded-2xl">
+                         <Image src={social.icon} alt={`${social.name} logo`} width={24} height={24} data-ai-hint={social.hint} />
+                    </Button>
+                ))}
+            </div>
+
+           <div className="mt-6 text-center text-sm">
             Don&apos;t have an account?{' '}
-            <Link href="/signup" className="underline text-primary">
-              Sign up
+            <Link href="/signup" className="underline text-primary font-bold">
+              Sign Up
             </Link>
           </div>
         </CardContent>
