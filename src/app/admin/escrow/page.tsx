@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -28,86 +29,20 @@ import {
   Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const escrowItems = [
-  {
-    id: 'ESC-4521',
-    status: 'Disputed',
-    critical: true,
-    customer: 'John Doe',
-    merchant: 'TechStore247',
-    order: '#1245',
-    reason: 'Product not as described',
-    filed: '2 hours ago',
-    amount: '45,000',
-    heldSince: '3 days ago',
-    evidence: 4,
-    autoRelease: '4 days',
-    lastActivity: '30 min ago',
-  },
-  {
-    id: 'ESC-4520',
-    status: 'Active',
-    customer: 'Alice Johnson',
-    merchant: 'QuickMart',
-    order: '#1244',
-    reason: 'Electronics Purchase',
-    filed: 'Order delivered',
-    amount: '18,500',
-    heldSince: '1 day ago',
-    autoRelease: '6 days',
-    lastActivity: 'Customer satisfaction pending',
-  },
-  {
-    id: 'ESC-4519',
-    status: 'Pending Release',
-    customer: 'Mike Wilson',
-    merchant: 'PhoneHub',
-    order: '#1243',
-    reason: 'Mobile Accessories',
-    filed: 'Ready for release',
-    amount: '8,200',
-    heldSince: '7 days ago',
-    autoRelease: '7-day holding period complete',
-  },
-  {
-    id: 'ESC-4518',
-    status: 'Released',
-    customer: 'Sarah Chen',
-    merchant: 'BookStore',
-    order: '#1242',
-    reason: 'Educational Books',
-    filed: 'Successfully completed',
-    amount: '12,800',
-    heldSince: 'Released 2 hours ago',
-  },
-];
-
-const timeline = [
-    { status: 'Dispute Filed', description: 'Customer reported product not as described', time: '2 hours ago', color: 'bg-blue-500' },
-    { status: 'Merchant Response', description: 'Merchant provided tracking and proof of delivery', time: '1 hour ago', color: 'bg-yellow-500' },
-    { status: 'Escalated to Admin', description: 'Automatic escalation due to unresolved dispute', time: '30 min ago', color: 'bg-red-500' },
-]
-
-const customerEvidence = [
-    { name: 'product_received.jpg', icon: ImageIcon },
-    { name: 'damage_photo.jpg', icon: ImageIcon },
-]
-
-const merchantEvidence = [
-    { name: 'delivery_receipt.pdf', icon: FileText },
-    { name: 'packaging_photo.jpg', icon: ImageIcon },
-]
+import { db } from '@/lib/db';
+import { escrowTransactions, users } from '@/lib/db/schema';
+import { eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 
 const getStatusBadge = (status: string) => {
   switch (status) {
-    case 'Active':
+    case 'ACTIVE':
       return 'bg-green-100 text-green-800';
-    case 'Disputed':
+    case 'DISPUTED':
       return 'bg-red-100 text-red-800';
-    case 'Pending Release':
+    case 'PENDING_RELEASE':
       return 'bg-yellow-100 text-yellow-800';
-    case 'Released':
+    case 'RELEASED':
       return 'bg-gray-100 text-gray-800';
     default:
       return 'bg-gray-100 text-gray-800';
@@ -149,7 +84,11 @@ function DisputeModal() {
         <div className="mb-6">
             <h3 className="text-lg font-bold mb-4 text-[hsl(var(--foreground))]">Dispute Timeline</h3>
             <div className="space-y-4">
-                {timeline.map(item => (
+                {[
+                  { status: 'Dispute Filed', description: 'Customer reported product not as described', time: '2 hours ago', color: 'bg-blue-500' },
+                  { status: 'Merchant Response', description: 'Merchant provided tracking and proof of delivery', time: '1 hour ago', color: 'bg-yellow-500' },
+                  { status: 'Escalated to Admin', description: 'Automatic escalation due to unresolved dispute', time: '30 min ago', color: 'bg-red-500' },
+                ].map(item => (
                     <div key={item.status} className="flex items-start">
                         <div className={`w-3 h-3 ${item.color} rounded-full mt-1 mr-3 shrink-0`}></div>
                         <div>
@@ -167,7 +106,10 @@ function DisputeModal() {
                 <Card className="p-4 rounded-xl">
                     <h4 className="font-medium mb-2">Customer Evidence</h4>
                     <div className="space-y-2">
-                        {customerEvidence.map(file => (
+                        {[
+                          { name: 'product_received.jpg', icon: ImageIcon },
+                          { name: 'damage_photo.jpg', icon: ImageIcon },
+                        ].map(file => (
                             <div key={file.name} className="flex items-center p-2 bg-gray-50 rounded-md">
                                 <file.icon className="w-4 h-4 mr-2 text-muted-foreground"/>
                                 <span className="text-xs">{file.name}</span>
@@ -178,7 +120,10 @@ function DisputeModal() {
                  <Card className="p-4 rounded-xl">
                     <h4 className="font-medium mb-2">Merchant Evidence</h4>
                      <div className="space-y-2">
-                        {merchantEvidence.map(file => (
+                        {[
+                          { name: 'delivery_receipt.pdf', icon: FileText },
+                          { name: 'packaging_photo.jpg', icon: ImageIcon },
+                        ].map(file => (
                             <div key={file.name} className="flex items-center p-2 bg-gray-50 rounded-md">
                                 <file.icon className="w-4 h-4 mr-2 text-muted-foreground"/>
                                 <span className="text-xs">{file.name}</span>
@@ -208,9 +153,31 @@ function DisputeModal() {
 }
 
 export default function AdminEscrowPage() {
+  const [escrowItems, setEscrowItems] = useState<any[]>([]);
   const [activeFilter, setActiveFilter] = useState('all');
   const filters = ['all', 'active', 'disputed', 'pending'];
   const filterCounts = { all: 124, active: 89, disputed: 7, pending: 28 };
+
+  useState(async () => {
+    const customer = alias(users, 'customer');
+    const merchant = alias(users, 'merchant');
+
+    const result = await db
+      .select({
+        id: escrowTransactions.id,
+        status: escrowTransactions.status,
+        amount: escrowTransactions.amount,
+        createdAt: escrowTransactions.createdAt,
+        orderId: escrowTransactions.orderId,
+        customerName: customer.fullName,
+        merchantName: merchant.fullName,
+      })
+      .from(escrowTransactions)
+      .leftJoin(customer, eq(escrowTransactions.customerId, customer.id))
+      .leftJoin(merchant, eq(escrowTransactions.merchantId, merchant.id));
+
+    setEscrowItems(result);
+  });
 
   return (
     <Dialog>
@@ -232,58 +199,60 @@ export default function AdminEscrowPage() {
         <main className="flex-1 overflow-auto p-6 bg-white rounded-b-2xl">
           <div className="space-y-4">
             {escrowItems.map((item) => (
-              <Card key={item.id} className={cn("rounded-2xl shadow-sm p-6", item.critical && 'border-l-4 border-destructive')}>
+              <Card key={item.id} className={cn("rounded-2xl shadow-sm p-6", item.status === 'DISPUTED' && 'border-l-4 border-destructive')}>
                 <div className="flex flex-col sm:flex-row items-start justify-between mb-4">
                     <div className="mb-4 sm:mb-0">
                         <div className="flex items-center mb-2 flex-wrap">
-                            <h3 className="text-lg font-bold mr-3">{item.id}</h3>
-                            <Badge className={cn("px-3 py-1 rounded-full text-xs font-medium", getStatusBadge(item.status))}>
+                            <h3 className="text-lg font-bold mr-3">{`ESC-${item.id}`}</h3>
+                            <Badge className={cn("px-3 py-1 rounded-full text-xs font-medium", getStatusBadge(item.status || ''))}>
                                 {item.status}
                             </Badge>
-                            {item.critical && (
+                            {item.status === 'DISPUTED' && (
                                 <Badge className="ml-2 bg-red-100 text-red-800 rounded-full text-xs font-bold">
                                     CRITICAL
                                 </Badge>
                             )}
                         </div>
                         <p className="text-sm mb-1 text-muted-foreground">
-                            <strong>Customer:</strong> {item.customer} → <strong>Merchant:</strong> {item.merchant}
+                            <strong>Customer:</strong> {item.customerName} → <strong>Merchant:</strong> {item.merchantName}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                            Order {item.order} • {item.reason} • {item.status !== 'Disputed' ? item.filed : `Filed ${item.filed}`}
+                            Order #{item.orderId}
                         </p>
                     </div>
                     <div className="text-left sm:text-right shrink-0">
                         <p className="text-xl font-bold">₦{item.amount}</p>
-                        <p className="text-xs text-muted-foreground">{item.status === "Released" ? item.heldSince : `Held since ${item.heldSince}`}</p>
+                        <p className="text-xs text-muted-foreground">
+                            Held since {new Date(item.createdAt).toLocaleDateString()}
+                        </p>
                     </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-                        {item.status === 'Disputed' && <span className="flex items-center"><FileText className="w-3 h-3 mr-1" /> Evidence: {item.evidence} files</span>}
-                        {item.status === 'Active' && <span className="flex items-center"><CheckCircle2 className="w-3 h-3 mr-1 text-green-500" /> Delivered successfully</span>}
-                        {item.status === 'Pending Release' && <span className="flex items-center"><CheckCircle2 className="w-3 h-3 mr-1 text-green-500" /> 7-day period complete</span>}
-                        {item.status === 'Released' && <span className="flex items-center"><CheckCircle2 className="w-3 h-3 mr-1 text-green-500" /> Transaction completed</span>}
+                        {item.status === 'DISPUTED' && <span className="flex items-center"><FileText className="w-3 h-3 mr-1" /> Evidence: 4 files</span>}
+                        {item.status === 'ACTIVE' && <span className="flex items-center"><CheckCircle2 className="w-3 h-3 mr-1 text-green-500" /> Delivered successfully</span>}
+                        {item.status === 'PENDING_RELEASE' && <span className="flex items-center"><CheckCircle2 className="w-3 h-3 mr-1 text-green-500" /> 7-day period complete</span>}
+                        {item.status === 'RELEASED' && <span className="flex items-center"><CheckCircle2 className="w-3 h-3 mr-1 text-green-500" /> Transaction completed</span>}
 
-                        {item.autoRelease && <span className="flex items-center"><Hourglass className="w-3 h-3 mr-1" /> Auto-release in: {item.autoRelease}</span>}
-                        {item.lastActivity && <span className="flex items-center"><Activity className="w-3 h-3 mr-1" /> Last activity: {item.lastActivity}</span>}
+                        <span className="flex items-center"><Hourglass className="w-3 h-3 mr-1" /> Auto-release in: 4 days</span>
+                        <span className="flex items-center"><Activity className="w-3 h-3 mr-1" /> Last activity: 30 min ago</span>
                     </div>
                      <div className="flex space-x-2">
-                        {item.status === 'Disputed' && (
+                        {item.status === 'DISPUTED' && (
                             <DialogTrigger asChild>
                                 <Button variant="destructive" className="rounded-full text-sm">Resolve Dispute</Button>
                             </DialogTrigger>
                         )}
-                        {item.status === 'Active' && <>
+                        {item.status === 'ACTIVE' && <>
                             <Button className="bg-success hover:bg-success/90 text-success-foreground rounded-full text-sm">Release Early</Button>
                             <Button variant="outline" className="rounded-full text-sm">View Details</Button>
                         </>}
-                        {item.status === 'Pending Release' && <>
+                        {item.status === 'PENDING_RELEASE' && <>
                              <Button className="bg-success hover:bg-success/90 text-success-foreground rounded-full text-sm">Release Funds</Button>
                              <Button variant="outline" className="rounded-full text-sm">View Details</Button>
                         </>}
-                         {item.status === 'Released' && (
+                         {item.status === 'RELEASED' && (
                              <Button variant="outline" className="rounded-full text-sm text-muted-foreground">View Archive</Button>
                          )}
                     </div>
@@ -300,3 +269,5 @@ export default function AdminEscrowPage() {
     </Dialog>
   );
 }
+
+    
