@@ -1,4 +1,6 @@
 
+'use client';
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { WebLogo } from '@/components/web/web-logo';
 import { User, Mail, Lock } from 'lucide-react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 const socialLogins = [
     { name: 'Google', icon: 'https://picsum.photos/24/24?random=1', hint: 'Google logo' },
@@ -21,6 +24,15 @@ const socialLogins = [
 ]
 
 export default function SignupPage() {
+  const router = useRouter();
+
+  const handleSignUp = (e: React.FormEvent) => {
+    e.preventDefault();
+    // In a real app, you'd handle form submission here.
+    // For now, we'll just navigate to the verification page.
+    router.push('/verify-otp');
+  };
+
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md rounded-3xl shadow-lg">
@@ -36,7 +48,7 @@ export default function SignupPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSignUp}>
             <div className="relative">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
