@@ -52,9 +52,9 @@ const navItems = [
   { href: '/dashboard/user-management', icon: Users, label: 'User Management', badge: 23 },
   { href: '/dashboard/escrow', icon: Package, label: 'Escrow Management', badge: 7 },
   { href: '/dashboard/transactions', icon: ArrowRightLeft, label: 'Transactions', badge: 3 },
-  { href: '#', icon: Ticket, label: 'Support & Tickets', badge: 15 },
+  { href: '/dashboard/support', icon: Ticket, label: 'Support & Tickets', badge: 15 },
   { href: '/dashboard/demand-planning', icon: BarChart, label: 'Demand Planning' },
-  { href: '#', icon: ShieldCheck, label: 'Security & Fraud', pulse: true },
+  { href: '/dashboard/security', icon: ShieldCheck, label: 'Security & Fraud', pulse: true },
 ];
 
 function NavLink({ item, isCollapsed }: { item: typeof navItems[0], isCollapsed: boolean }) {
@@ -129,6 +129,10 @@ export default function DashboardLayout({
             return 'Monitor and manage payment escrow transactions';
         case 'user management':
             return 'Manage all users on the platform';
+        case 'support':
+            return 'Manage customer support tickets and communication';
+        case 'security':
+            return 'Monitor security alerts and manage fraud prevention';
         default:
             return 'Welcome to your dashboard';
     }
