@@ -1,4 +1,6 @@
 
+'use client'
+
 import {
   File,
   ListFilter,
@@ -40,74 +42,21 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
+import { db } from '@/lib/db';
+import { supportTickets } from '@/lib/db/schema';
+import type { supportTickets as SupportTicketType } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
-const tickets = [
-  {
-    id: 'TKT-001',
-    subject: 'Late delivery inquiry',
-    customer: 'John Doe',
-    priority: 'High',
-    status: 'Open',
-    lastUpdate: '2024-07-30 10:45 AM',
-  },
-  {
-    id: 'TKT-002',
-    subject: 'Payment issue with order #1245',
-    customer: 'Jane Smith',
-    priority: 'High',
-    status: 'In Progress',
-    lastUpdate: '2024-07-30 10:30 AM',
-  },
-  {
-    id: 'TKT-003',
-    subject: 'Wrong item received for order #1243',
-    customer: 'Robert Johnson',
-    priority: 'Medium',
-    status: 'Open',
-    lastUpdate: '2024-07-30 09:15 AM',
-  },
-  {
-    id: 'TKT-004',
-    subject: 'Question about product specifications',
-    customer: 'Emily White',
-    priority: 'Low',
-    status: 'Closed',
-    lastUpdate: '2024-07-29 05:00 PM',
-  },
-  {
-    id: 'TKT-005',
-    subject: 'Account access problem',
-    customer: 'Michael Brown',
-    priority: 'High',
-    status: 'Open',
-    lastUpdate: '2024-07-30 11:00 AM',
-  },
-  {
-    id: 'TKT-006',
-    subject: 'Refund request for order #1242',
-    customer: 'Sarah Davis',
-    priority: 'Medium',
-    status: 'Closed',
-    lastUpdate: '2024-07-28 02:20 PM',
-  },
-   {
-    id: 'TKT-007',
-    subject: 'Feature request for mobile app',
-    customer: 'David Wilson',
-    priority: 'Low',
-    status: 'In Progress',
-    lastUpdate: '2024-07-30 11:30 AM',
-  },
-];
 
 const getPriorityBadgeVariant = (priority: string) => {
   switch (priority) {
-    case 'High':
+    case 'HIGH':
+    case 'URGENT':
       return 'destructive';
-    case 'Medium':
+    case 'NORMAL':
       return 'warning';
-    case 'Low':
+    case 'LOW':
       return 'secondary';
     default:
       return 'outline';
@@ -116,11 +65,12 @@ const getPriorityBadgeVariant = (priority: string) => {
 
 const getStatusBadgeVariant = (status: string) => {
   switch (status) {
-    case 'Open':
+    case 'OPEN':
       return 'success';
-    case 'In Progress':
+    case 'IN_PROGRESS':
       return 'warning';
-    case 'Closed':
+    case 'CLOSED':
+    case 'RESOLVED':
       return 'secondary';
     default:
       return 'outline';
@@ -128,6 +78,16 @@ const getStatusBadgeVariant = (status: string) => {
 };
 
 export default function AdminSupportPage() {
+  const [tickets, setTickets] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchTickets() {
+        const result = await db.select().from(supportTickets);
+        setTickets(result);
+    }
+    fetchTickets();
+  }, [])
+
   return (
     <Tabs defaultValue="all">
       <div className="flex items-center pb-4">
@@ -192,20 +152,20 @@ export default function AdminSupportPage() {
             <TableBody>
               {tickets.map((ticket) => (
                 <TableRow key={ticket.id}>
-                  <TableCell className="font-medium">{ticket.id}</TableCell>
+                  <TableCell className="font-medium">{ticket.ticketNumber}</TableCell>
                   <TableCell>{ticket.subject}</TableCell>
-                  <TableCell>{ticket.customer}</TableCell>
+                  <TableCell>{ticket.name}</TableCell>
                   <TableCell>
-                    <Badge variant={getPriorityBadgeVariant(ticket.priority) as any}>
+                    <Badge variant={getPriorityBadgeVariant(ticket.priority || 'NORMAL') as any}>
                       {ticket.priority}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getStatusBadgeVariant(ticket.status) as any}>
+                    <Badge variant={getStatusBadgeVariant(ticket.status || 'OPEN') as any}>
                       {ticket.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{ticket.lastUpdate}</TableCell>
+                  <TableCell>{new Date(ticket.updatedAt || '').toLocaleString()}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -233,7 +193,7 @@ export default function AdminSupportPage() {
         </CardContent>
          <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Showing <strong>1-7</strong> of <strong>15</strong> tickets
+              Showing <strong>1-{tickets.length}</strong> of <strong>{tickets.length}</strong> tickets
             </div>
           </CardFooter>
       </Card>

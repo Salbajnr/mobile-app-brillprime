@@ -175,7 +175,9 @@ export default function AdminDashboardPage() {
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-lg font-bold">Recent Admin Actions</CardTitle>
-                    <Button variant="link" className="text-primary">View All</Button>
+                    <Button variant="link" asChild className="text-primary">
+                      <Link href="/admin">View All</Link>
+                    </Button>
                 </div>
             </CardHeader>
             <CardContent>

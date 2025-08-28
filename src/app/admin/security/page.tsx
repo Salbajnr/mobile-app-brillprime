@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, AlertTriangle, Fingerprint, BarChart2 } from 'lucide-react';
 import {
   ChartContainer,
   ChartTooltip,
@@ -26,6 +25,9 @@ import {
 } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
 import type { ChartConfig } from '@/components/ui/chart';
+import { db } from '@/lib/db';
+import { fraudAlerts as fraudAlertsTable } from '@/lib/db/schema';
+import { useEffect, useState } from 'react';
 
 const chartData = [
   { month: 'January', desktop: 186, mobile: 80 },
@@ -46,42 +48,6 @@ const chartConfig = {
     color: 'hsl(var(--warning))',
   },
 } satisfies ChartConfig;
-
-
-const securityAlerts = [
-  {
-    id: 'ALT-001',
-    type: 'Multiple Login Failures',
-    user: 'john.doe@email.com',
-    severity: 'High',
-    timestamp: '2024-07-30 11:45 AM',
-    status: 'Pending Review',
-  },
-  {
-    id: 'ALT-002',
-    type: 'Unusual Location Login',
-    user: 'jane.smith@email.com',
-    severity: 'Medium',
-    timestamp: '2024-07-30 10:20 AM',
-    status: 'Reviewed',
-  },
-  {
-    id: 'ALT-003',
-    type: 'Large Transaction Attempt',
-    user: 'michael.b@email.com',
-    severity: 'High',
-    timestamp: '2024-07-30 08:10 AM',
-    status: 'Action Taken',
-  },
-  {
-    id: 'ALT-004',
-    type: 'KYC Document Mismatch',
-    user: 'emily.w@email.com',
-    severity: 'Low',
-    timestamp: '2024-07-29 04:00 PM',
-    status: 'Reviewed',
-  },
-];
 
 const getSeverityBadgeVariant = (severity: string) => {
   switch (severity) {
@@ -109,8 +75,19 @@ const getStatusBadgeVariant = (status: string) => {
   }
 };
 
+type FraudAlert = typeof fraudAlertsTable.$inferSelect;
 
 export default function AdminSecurityPage() {
+    const [fraudAlerts, setFraudAlerts] = useState<FraudAlert[]>([]);
+
+    useEffect(() => {
+        async function fetchFraudAlerts() {
+            const result = await db.select().from(fraudAlertsTable);
+            setFraudAlerts(result);
+        }
+        fetchFraudAlerts();
+    }, []);
+
   return (
     <div className="grid gap-6">
        <Card className="rounded-2xl shadow-sm">
@@ -153,7 +130,7 @@ export default function AdminSecurityPage() {
               <TableRow>
                 <TableHead>Alert ID</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>User</TableHead>
+                <TableHead>User ID</TableHead>
                 <TableHead>Severity</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Timestamp</TableHead>
@@ -161,22 +138,22 @@ export default function AdminSecurityPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {securityAlerts.map((alert) => (
+              {fraudAlerts.map((alert) => (
                 <TableRow key={alert.id} className={alert.severity === 'High' ? 'bg-red-500/5' : ''}>
-                  <TableCell className="font-medium">{alert.id}</TableCell>
-                  <TableCell>{alert.type}</TableCell>
-                  <TableCell>{alert.user}</TableCell>
+                  <TableCell className="font-medium">{`ALT-${alert.id}`}</TableCell>
+                  <TableCell>{alert.alertType}</TableCell>
+                  <TableCell>{alert.userId}</TableCell>
                   <TableCell>
-                    <Badge variant={getSeverityBadgeVariant(alert.severity) as any}>
+                    <Badge variant={getSeverityBadgeVariant(alert.severity || 'Low') as any}>
                       {alert.severity}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                     <Badge variant={getStatusBadgeVariant(alert.status) as any}>
+                     <Badge variant={getStatusBadgeVariant(alert.status || 'Pending Review') as any}>
                       {alert.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{alert.timestamp}</TableCell>
+                  <TableCell>{new Date(alert.createdAt || '').toLocaleString()}</TableCell>
                   <TableCell>
                     <Button variant="outline" size="sm" className="rounded-full">View Details</Button>
                   </TableCell>
