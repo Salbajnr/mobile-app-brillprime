@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -38,8 +39,8 @@ const kpiCards = [
     change: '7 Pending',
     breakdown: 'Active: ₦8.2M • Disputed: ₦4.2M',
     icon: Package,
-    iconBg: 'bg-green-100',
-    iconColor: 'text-success',
+    iconBg: 'bg-yellow-100',
+    iconColor: 'text-yellow-600',
     badge: 'warning',
   },
   {
@@ -48,8 +49,8 @@ const kpiCards = [
     change: 'Real-time',
     breakdown: '2,847 transactions today',
     icon: ArrowRightLeft,
-    iconBg: 'bg-purple-100',
-    iconColor: 'text-accent',
+    iconBg: 'bg-orange-100',
+    iconColor: 'text-orange-600',
     badge: 'info',
   },
   {
@@ -58,8 +59,8 @@ const kpiCards = [
     change: '15 Open',
     breakdown: 'Avg response: 2.4 hours',
     icon: Ticket,
-    iconBg: 'bg-orange-100',
-    iconColor: 'text-orange-600',
+    iconBg: 'bg-red-100',
+    iconColor: 'text-red-600',
     badge: 'destructive',
   },
 ];
@@ -80,10 +81,10 @@ const systemHealth = [
 ]
 
 const quickActions = [
-    { href: "#", icon: Package, label: "Manage Escrow", color: "text-primary" },
-    { href: "#", icon: Users, label: "Approve Users", color: "text-success" },
-    { href: "#", icon: ArrowRightLeft, label: "Review Transactions", color: "text-accent" },
-    { href: "#", icon: Ticket, label: "Handle Support", color: "text-orange-600" },
+    { href: "/dashboard/escrow", icon: Package, label: "Manage Escrow", color: "text-yellow-600" },
+    { href: "/dashboard/user-management", icon: Users, label: "Approve Users", color: "text-primary" },
+    { href: "/dashboard/transactions", icon: ArrowRightLeft, label: "Review Transactions", color: "text-orange-600" },
+    { href: "/dashboard/support", icon: Ticket, label: "Handle Support", color: "text-red-600" },
 ];
 
 
@@ -105,8 +106,8 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
-            <Button className="rounded-full" variant="destructive" size="sm">
-              Review Now
+            <Button asChild className="rounded-full" variant="destructive" size="sm">
+              <Link href="/dashboard/security">Review Now</Link>
             </Button>
           </CardContent>
         </Card>
@@ -124,8 +125,8 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
-            <Button className="rounded-full bg-yellow-500 text-white hover:bg-yellow-500/90" size="sm">
-              Handle Dispute
+            <Button asChild className="rounded-full bg-yellow-500 text-white hover:bg-yellow-500/90" size="sm">
+              <Link href="/dashboard/escrow">Handle Dispute</Link>
             </Button>
           </CardContent>
         </Card>
@@ -142,19 +143,21 @@ export default function Dashboard() {
                 >
                   <card.icon className={`h-6 w-6 ${card.iconColor}`} />
                 </div>
-                <span
-                  className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                    card.badge === 'destructive'
-                      ? 'bg-red-100 text-red-800'
-                      : card.badge === 'warning'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : card.badge === 'info'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-green-100 text-green-800'
-                  }`}
-                >
-                  {card.change}
-                </span>
+                {card.change &&
+                  <span
+                    className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                      card.badge === 'destructive'
+                        ? 'bg-red-100 text-red-800'
+                        : card.badge === 'warning'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : card.badge === 'info'
+                        ? 'bg-orange-100 text-orange-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}
+                  >
+                    {card.change}
+                  </span>
+                }
               </div>
               <div>
                 <p className="text-2xl font-bold">{card.value}</p>
@@ -238,9 +241,11 @@ export default function Dashboard() {
         <CardContent>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                 {quickActions.map((action) => (
-                    <Button key={action.label} variant="outline" className="h-auto flex-col gap-2 rounded-2xl border-gray-200 p-4 hover:shadow-md">
+                  <Button asChild key={action.label} variant="outline" className="h-auto flex-col gap-2 rounded-2xl border-gray-200 p-4 hover:shadow-md">
+                      <Link href={action.href}>
                          <action.icon className={`h-8 w-8 ${action.color}`} />
-                         <p className="text-sm font-medium">{action.label}</p>
+                         <p className="text-sm font-medium text-foreground">{action.label}</p>
+                      </Link>
                     </Button>
                 ))}
             </div>

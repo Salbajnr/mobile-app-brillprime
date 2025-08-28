@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -78,10 +79,7 @@ function NavLink({ item, isCollapsed }: { item: typeof navItems[0], isCollapsed:
           {!isCollapsed && item.badge && (
             <span className={cn(
                 "ml-auto text-xs px-2 py-1 rounded-full text-white",
-                item.label.includes('User') ? 'bg-red-500' :
-                item.label.includes('Escrow') ? 'bg-yellow-500' :
-                item.label.includes('Transactions') ? 'bg-orange-500' :
-                'bg-green-500'
+                isActive ? "bg-primary" : "bg-muted-foreground"
             )}>{item.badge}</span>
           )}
           {!isCollapsed && item.pulse && (
@@ -141,7 +139,7 @@ export default function DashboardLayout({
 
   return (
     <TooltipProvider>
-      <div className="flex min-h-screen w-full flex-col">
+      <div className="flex min-h-screen w-full flex-col bg-background">
         <aside className={cn(
           "hidden md:flex flex-col border-r bg-white transition-all duration-300",
           isCollapsed ? "w-20" : "w-64"
@@ -155,9 +153,9 @@ export default function DashboardLayout({
           <div className="mt-auto p-4 border-t">
               <div className="flex items-center gap-3">
                 <Image
-                    src="https://picsum.photos/36/36"
-                    width={40}
-                    height={40}
+                    src="https://picsum.photos/40/40"
+                    width={36}
+                    height={36}
                     alt="Avatar"
                     data-ai-hint="Admin avatar"
                     className="rounded-full"
