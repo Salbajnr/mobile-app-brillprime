@@ -5,7 +5,7 @@ export function Logo({ className, isCollapsed = false }: { className?: string, i
   return (
     <div className={cn("flex items-center gap-3", className)}>
       <Image
-        src="/logo.png"
+        src="/images/logo.png"
         alt="BrillPrime Logo"
         width={40}
         height={40}
