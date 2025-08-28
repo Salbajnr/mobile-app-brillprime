@@ -5,11 +5,11 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 const signInSchema = z.object({
-  email: z.string().email(),
-  password: z.string(),
+  email: z.string().email({ message: 'Please enter a valid email.' }),
+  password: z.string().min(1, { message: 'Password is required.' }),
 });
 
 export type FormState = {
@@ -18,7 +18,8 @@ export type FormState = {
 };
 
 async function verifyPassword(password: string, hash: string): Promise<boolean> {
-    // In a real app, you'd use bcrypt.compare or argon2.verify
+    // In a real app, you'd use bcrypt.compare or argon2.verify.
+    // For this prototype, we are simulating the hash comparison.
     return `hashed_${password}` === hash;
 }
 
@@ -29,7 +30,7 @@ export async function signIn(prevState: FormState, formData: FormData): Promise<
 
   if (!validatedFields.success) {
     return {
-      message: 'Invalid email or password.',
+      message: 'Invalid input.',
       errors: validatedFields.error.flatten().fieldErrors,
     };
   }
@@ -42,6 +43,7 @@ export async function signIn(prevState: FormState, formData: FormData): Promise<
     });
 
     if (!user) {
+        // Return a generic error to prevent email enumeration
         return { message: 'Invalid email or password.' };
     }
 
@@ -51,13 +53,17 @@ export async function signIn(prevState: FormState, formData: FormData): Promise<
         return { message: 'Invalid email or password.' };
     }
 
-    // Here you would typically create a session, set a cookie, etc.
-    // For now, we'll just return a success message.
-    
-    return { message: 'Sign in successful.' };
+    // In a real app, you would create a session/JWT here.
+    // For now, we will just redirect.
+    if (user.role === 'ADMIN') {
+       redirect('/admin');
+    } else {
+       // Placeholder for other user roles
+       redirect('/web');
+    }
 
   } catch (error) {
     console.error(error);
-    return { message: 'An unexpected error occurred.' };
+    return { message: 'An unexpected error occurred. Please try again.' };
   }
 }

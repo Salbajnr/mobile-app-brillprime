@@ -42,18 +42,17 @@ function SubmitButton() {
 export default function SigninPage() {
   const [state, formAction] = useFormState(signIn, initialState);
   const { toast } = useToast();
-  const router = useRouter();
   
   useEffect(() => {
-    if (state.message) {
-      if (state.errors || state.message === 'Invalid email or password.' || state.message === 'An unexpected error occurred.') {
-        toast({ variant: 'destructive', title: 'Error', description: state.message });
-      } else {
-        toast({ title: 'Success', description: state.message });
-        router.push('/admin');
-      }
+    if (state.message && (state.errors || state.message.startsWith('Invalid') || state.message.startsWith('An unexpected'))) {
+        toast({ 
+            variant: 'destructive', 
+            title: 'Login Failed', 
+            description: state.message 
+        });
     }
-  }, [state, toast, router]);
+    // Success case is handled by redirect in the server action, so no toast is needed here.
+  }, [state, toast]);
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-gray-50 p-4">
