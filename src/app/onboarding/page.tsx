@@ -47,7 +47,7 @@ export default function OnboardingPage() {
       setCurrentStep(currentStep + 1);
     } else {
       localStorage.setItem('hasSeenOnboarding', 'true');
-      router.push('/signup');
+      router.push('/role-selection');
     }
   };
 
