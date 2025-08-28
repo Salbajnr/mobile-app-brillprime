@@ -1,5 +1,6 @@
 
-import { pgTable, serial, varchar, text, timestamp, boolean, integer, decimal, jsonb, pgEnum, index, uniqueIndex } from "drizzle-orm/pg-core";
+
+import { pgTable, serial, varchar, text, timestamp, boolean, integer, decimal, jsonb, pgEnum, index, uniqueIndex, foreignKey } from "drizzle-orm/pg-core";
 import { z } from 'zod';
 import { createInsertSchema } from 'drizzle-zod';
 
@@ -8,6 +9,9 @@ export const roleEnum = pgEnum('role', ['CONSUMER', 'MERCHANT', 'DRIVER', 'ADMIN
 export const verificationStatusEnum = pgEnum('verification_status', ['PENDING', 'APPROVED', 'REJECTED', 'VERIFIED']);
 export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'DELIVERED', 'CANCELLED']);
 export const paymentStatusEnum = pgEnum('payment_status', ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']);
+export const escrowStatusEnum = pgEnum('escrow_status', ['PENDING', 'HELD', 'RELEASED', 'DISPUTED', 'REFUNDED', 'CANCELLED']);
+export const disputeStatusEnum = pgEnum('dispute_status', ['OPEN', 'UNDER_REVIEW', 'RESOLVED', 'CLOSED']);
+
 
 // Users table (Enhanced)
 export const users: any = pgTable("users", {
@@ -366,6 +370,28 @@ export const paymentMethods = pgTable("payment_methods", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
+export const disputes = pgTable("disputes", {
+    id: serial("id").primaryKey(),
+    escrowTransactionId: integer("escrow_transaction_id").references(() => escrowTransactions.id).notNull(),
+    reason: text("reason").notNull(),
+    status: disputeStatusEnum("status").default('OPEN'),
+    resolution: text("resolution"),
+    resolvedBy: integer("resolved_by").references(() => users.id),
+    resolvedAt: timestamp("resolved_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const disputeEvidence = pgTable("dispute_evidence", {
+  id: serial("id").primaryKey(),
+  disputeId: integer("dispute_id").references(() => disputes.id).notNull(),
+  uploadedByUserId: integer("uploaded_by_user_id").references(() => users.id).notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileName: varchar("file_name", { length: 255 }),
+  fileType: varchar("file_type", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Escrow transactions table (from original, unchanged)
 export const escrowTransactions = pgTable("escrow_transactions", {
   id: serial("id").primaryKey(),
@@ -374,13 +400,13 @@ export const escrowTransactions = pgTable("escrow_transactions", {
   merchantId: integer("merchant_id").references(() => users.id),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: text("currency").default('NGN'),
-  status: text("status").default('PENDING'), // 'PENDING', 'PAID', 'HELD', 'RELEASED', 'DISPUTED', 'REFUNDED'
+  status: escrowStatusEnum("status").default('PENDING'),
   paymentMethod: text("payment_method"),
   paymentReference: text("payment_reference"),
   escrowReleaseDate: timestamp("escrow_release_date"),
   releasedAt: timestamp("released_at"),
   releasedBy: integer("released_by").references(() => users.id),
-  disputeId: integer("dispute_id"),
+  disputeId: integer("dispute_id").references(() => disputes.id),
   failureReason: text("failure_reason"),
   customerDetails: jsonb("customer_details"),
   metadata: jsonb("metadata"),
@@ -799,6 +825,12 @@ export const demandPredictions = pgTable('demand_predictions', {
 // Export types for TypeScript
 export type SelectUser = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+export type SelectDispute = typeof disputes.$inferSelect;
+export type InsertDispute = typeof disputes.$inferInsert;
+export type SelectDisputeEvidence = typeof disputeEvidence.$inferSelect;
+export type InsertDisputeEvidence = typeof disputeEvidence.$inferInsert;
+export type SelectEscrowTransaction = typeof escrowTransactions.$inferSelect;
+export type InsertEscrowTransaction = typeof escrowTransactions.$inferInsert;
 
 // Add validation schemas for forms (basic exports for compatibility)
 export const signInSchema = z.object({
@@ -867,7 +899,7 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
 
 export const insertTransactionSchema = createInsertSchema(transactions).omit({
   id: true,
-  createdAt: true
+createdAt: true
 });
 
 export const insertFuelOrderSchema = createInsertSchema(fuelOrders).omit({
@@ -910,3 +942,4 @@ export type InsertQrReceiptScan = z.infer<typeof insertQrReceiptScanSchema>;
 
 export type DemandPrediction = typeof demandPredictions.$inferSelect;
 export type InsertDemandPrediction = z.infer<typeof insertDemandPredictionSchema>;
+

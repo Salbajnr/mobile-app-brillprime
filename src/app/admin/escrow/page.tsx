@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -27,148 +28,190 @@ import {
   CheckCircle2,
   Hourglass,
   Activity,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/db';
 import { escrowTransactions, users } from '@/lib/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import type { SelectEscrowTransaction, SelectUser, SelectDisputeEvidence } from '@/lib/db/schema';
+import { getDisputeDetails, resolveDispute, type DisputeDetails } from './actions';
+import { useToast } from '@/hooks/use-toast';
+
 
 const getStatusBadge = (status: string) => {
   switch (status) {
     case 'ACTIVE':
+    case 'HELD':
       return 'bg-green-100 text-green-800';
     case 'DISPUTED':
       return 'bg-red-100 text-red-800';
     case 'PENDING_RELEASE':
       return 'bg-yellow-100 text-yellow-800';
     case 'RELEASED':
+    case 'REFUNDED':
+    case 'CANCELLED':
       return 'bg-gray-100 text-gray-800';
     default:
       return 'bg-gray-100 text-gray-800';
   }
 };
 
-function DisputeModal() {
+function DisputeModal({ disputeDetails }: { disputeDetails: DisputeDetails | null }) {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleResolveDispute = async (formData: FormData) => {
+    if (!disputeDetails) return;
+    setIsSubmitting(true);
+    formData.append('disputeId', disputeDetails.dispute.id.toString());
+    const result = await resolveDispute(formData);
+    setIsSubmitting(false);
+
+    toast({
+      title: result.success ? 'Success' : 'Error',
+      description: result.message,
+      variant: result.success ? 'default' : 'destructive'
+    })
+
+    if (result.success) {
+      // Find a way to close the dialog
+      document.dispatchEvent(new CustomEvent('close-dispute-modal'));
+    }
+  }
+
+  if (!disputeDetails) {
+    return (
+      <DialogContent className="max-w-2xl p-6">
+         <DialogHeader>
+          <DialogTitle className="text-xl font-bold text-[hsl(var(--foreground))]">Loading Dispute...</DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center justify-center p-12">
+            <Loader2 className="w-8 h-8 animate-spin" />
+        </div>
+      </DialogContent>
+    );
+  }
+
+  const { escrowTransaction, customer, merchant, evidence } = disputeDetails;
+
   return (
     <DialogContent className="max-w-2xl p-0">
       <DialogHeader className="p-6 border-b">
         <DialogTitle className="text-xl font-bold text-[hsl(var(--foreground))]">Dispute Resolution</DialogTitle>
       </DialogHeader>
-      <div className="p-6 max-h-[70vh] overflow-y-auto">
-        <div className="mb-6">
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Escrow ID</p>
-              <p className="text-lg font-bold">ESC-4521</p>
+      <form action={handleResolveDispute}>
+        <div className="p-6 max-h-[70vh] overflow-y-auto">
+          <div className="mb-6">
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Escrow ID</p>
+                <p className="text-lg font-bold">{`ESC-${escrowTransaction.id}`}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Amount</p>
+                <p className="text-lg font-bold">₦{escrowTransaction.amount}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Amount</p>
-              <p className="text-lg font-bold">₦45,000</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Customer</p>
+                <p className="font-medium">{customer?.fullName}</p>
+                <p className="text-xs text-muted-foreground">{customer?.email}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Merchant</p>
+                <p className="font-medium">{merchant?.fullName}</p>
+                <p className="text-xs text-muted-foreground">{merchant?.email}</p>
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Customer</p>
-              <p className="font-medium">John Doe</p>
-              <p className="text-xs text-muted-foreground">john.doe@email.com</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Merchant</p>
-              <p className="font-medium">TechStore247</p>
-              <p className="text-xs text-muted-foreground">tech@techstore247.com</p>
-            </div>
+          
+          <div className="mb-6">
+              <h3 className="text-lg font-bold mb-4 text-[hsl(var(--foreground))]">Dispute Timeline</h3>
+              <div className="space-y-4">
+                  <div className="flex items-start">
+                      <div className={`w-3 h-3 bg-blue-500 rounded-full mt-1 mr-3 shrink-0`}></div>
+                      <div>
+                          <p className="text-sm font-medium">Dispute Filed</p>
+                          <p className="text-xs text-muted-foreground">{disputeDetails.dispute.reason} • {new Date(disputeDetails.dispute.createdAt!).toLocaleString()}</p>
+                      </div>
+                  </div>
+              </div>
           </div>
-        </div>
-        
-        <div className="mb-6">
-            <h3 className="text-lg font-bold mb-4 text-[hsl(var(--foreground))]">Dispute Timeline</h3>
-            <div className="space-y-4">
-                {[
-                  { status: 'Dispute Filed', description: 'Customer reported product not as described', time: '2 hours ago', color: 'bg-blue-500' },
-                  { status: 'Merchant Response', description: 'Merchant provided tracking and proof of delivery', time: '1 hour ago', color: 'bg-yellow-500' },
-                  { status: 'Escalated to Admin', description: 'Automatic escalation due to unresolved dispute', time: '30 min ago', color: 'bg-red-500' },
-                ].map(item => (
-                    <div key={item.status} className="flex items-start">
-                        <div className={`w-3 h-3 ${item.color} rounded-full mt-1 mr-3 shrink-0`}></div>
-                        <div>
-                            <p className="text-sm font-medium">{item.status}</p>
-                            <p className="text-xs text-muted-foreground">{item.description} • {item.time}</p>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
 
-        <div className="mb-6">
-            <h3 className="text-lg font-bold mb-4 text-[hsl(var(--foreground))]">Evidence</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="p-4 rounded-xl">
-                    <h4 className="font-medium mb-2">Customer Evidence</h4>
-                    <div className="space-y-2">
-                        {[
-                          { name: 'product_received.jpg', icon: ImageIcon },
-                          { name: 'damage_photo.jpg', icon: ImageIcon },
-                        ].map(file => (
-                            <div key={file.name} className="flex items-center p-2 bg-gray-50 rounded-md">
-                                <file.icon className="w-4 h-4 mr-2 text-muted-foreground"/>
-                                <span className="text-xs">{file.name}</span>
-                            </div>
-                        ))}
-                    </div>
-                </Card>
-                 <Card className="p-4 rounded-xl">
-                    <h4 className="font-medium mb-2">Merchant Evidence</h4>
-                     <div className="space-y-2">
-                        {[
-                          { name: 'delivery_receipt.pdf', icon: FileText },
-                          { name: 'packaging_photo.jpg', icon: ImageIcon },
-                        ].map(file => (
-                            <div key={file.name} className="flex items-center p-2 bg-gray-50 rounded-md">
-                                <file.icon className="w-4 h-4 mr-2 text-muted-foreground"/>
-                                <span className="text-xs">{file.name}</span>
-                            </div>
-                        ))}
-                    </div>
-                </Card>
-            </div>
+          <div className="mb-6">
+              <h3 className="text-lg font-bold mb-4 text-[hsl(var(--foreground))]">Evidence</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card className="p-4 rounded-xl">
+                      <h4 className="font-medium mb-2">Customer Evidence ({evidence.customer.length})</h4>
+                      <div className="space-y-2">
+                          {evidence.customer.length > 0 ? evidence.customer.map(file => (
+                              <div key={file.id} className="flex items-center p-2 bg-gray-50 rounded-md">
+                                  <ImageIcon className="w-4 h-4 mr-2 text-muted-foreground"/>
+                                  <a href={file.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline">{file.fileName}</a>
+                              </div>
+                          )) : <p className="text-xs text-muted-foreground">No evidence submitted.</p>}
+                      </div>
+                  </Card>
+                  <Card className="p-4 rounded-xl">
+                      <h4 className="font-medium mb-2">Merchant Evidence ({evidence.merchant.length})</h4>
+                      <div className="space-y-2">
+                           {evidence.merchant.length > 0 ? evidence.merchant.map(file => (
+                              <div key={file.id} className="flex items-center p-2 bg-gray-50 rounded-md">
+                                  <ImageIcon className="w-4 h-4 mr-2 text-muted-foreground"/>
+                                  <a href={file.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline">{file.fileName}</a>
+                              </div>
+                          )) : <p className="text-xs text-muted-foreground">No evidence submitted.</p>}
+                      </div>
+                  </Card>
+              </div>
+          </div>
+          
+          <div className="mb-6">
+              <h3 className="text-lg font-bold mb-4 text-[hsl(var(--foreground))]">Resolution Actions</h3>
+              <Textarea 
+                  name="adminNotes"
+                  className="w-full p-4 border rounded-xl mb-4 text-sm" 
+                  rows={4} 
+                  placeholder="Enter admin notes and resolution details..."
+                  required
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Button name="resolution" value="REFUND_CUSTOMER" type="submit" variant="destructive" className="rounded-full" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Refund Customer
+                  </Button>
+                  <Button name="resolution" value="RELEASE_TO_MERCHANT" type="submit" className="bg-success text-success-foreground hover:bg-success/90 rounded-full" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Release to Merchant
+                  </Button>
+              </div>
+          </div>
         </div>
-        
-        <div className="mb-6">
-            <h3 className="text-lg font-bold mb-4 text-[hsl(var(--foreground))]">Resolution Actions</h3>
-            <Textarea 
-                className="w-full p-4 border rounded-xl mb-4 text-sm" 
-                rows={4} 
-                placeholder="Enter admin notes and resolution details..."
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Button variant="destructive" className="rounded-full">Refund Customer</Button>
-                <Button className="bg-success text-success-foreground hover:bg-success/90 rounded-full">Release to Merchant</Button>
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full">Partial Refund</Button>
-            </div>
-        </div>
-      </div>
+      </form>
     </DialogContent>
   );
 }
 
 export default function AdminEscrowPage() {
-  const [escrowItems, setEscrowItems] = useState<any[]>([]);
+  const [escrowItems, setEscrowItems] = useState<(SelectEscrowTransaction & { customerName: string | null; merchantName: string | null })[]>([]);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [disputeDetails, setDisputeDetails] = useState<DisputeDetails | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { toast } = useToast();
+
   const filters = ['all', 'active', 'disputed', 'pending'];
   const filterCounts = { all: 124, active: 89, disputed: 7, pending: 28 };
 
-  useState(async () => {
+  const fetchEscrowItems = async () => {
     const customer = alias(users, 'customer');
     const merchant = alias(users, 'merchant');
 
     const result = await db
       .select({
-        id: escrowTransactions.id,
-        status: escrowTransactions.status,
-        amount: escrowTransactions.amount,
-        createdAt: escrowTransactions.createdAt,
-        orderId: escrowTransactions.orderId,
+        ...escrowTransactions,
         customerName: customer.fullName,
         merchantName: merchant.fullName,
       })
@@ -177,10 +220,39 @@ export default function AdminEscrowPage() {
       .leftJoin(merchant, eq(escrowTransactions.merchantId, merchant.id));
 
     setEscrowItems(result);
-  });
+  }
+
+  useEffect(() => {
+    fetchEscrowItems();
+    
+    const closeModal = () => {
+      setIsModalOpen(false);
+      fetchEscrowItems(); // Refetch items after modal closes
+    };
+    document.addEventListener('close-dispute-modal', closeModal);
+    return () => {
+      document.removeEventListener('close-dispute-modal', closeModal);
+    };
+  }, []);
+
+  const handleResolveClick = async (escrowId: number) => {
+    setDisputeDetails(null); // Clear previous details
+    setIsModalOpen(true);
+    const details = await getDisputeDetails(escrowId);
+    if ('error' in details) {
+      toast({
+        title: "Error",
+        description: details.error,
+        variant: 'destructive',
+      });
+      setIsModalOpen(false);
+    } else {
+      setDisputeDetails(details);
+    }
+  }
 
   return (
-    <Dialog>
+    <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
       <div className="flex flex-col h-full">
         <div className="bg-white px-6 py-4 border-b rounded-t-2xl">
             <div className="flex flex-wrap gap-2">
@@ -223,14 +295,14 @@ export default function AdminEscrowPage() {
                     <div className="text-left sm:text-right shrink-0">
                         <p className="text-xl font-bold">₦{item.amount}</p>
                         <p className="text-xs text-muted-foreground">
-                            Held since {new Date(item.createdAt).toLocaleDateString()}
+                            Held since {new Date(item.createdAt!).toLocaleDateString()}
                         </p>
                     </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-                        {item.status === 'DISPUTED' && <span className="flex items-center"><FileText className="w-3 h-3 mr-1" /> Evidence: 4 files</span>}
+                        {item.status === 'DISPUTED' && <span className="flex items-center"><ShieldAlert className="w-3 h-3 mr-1 text-destructive" /> Dispute requires resolution</span>}
                         {item.status === 'ACTIVE' && <span className="flex items-center"><CheckCircle2 className="w-3 h-3 mr-1 text-green-500" /> Delivered successfully</span>}
                         {item.status === 'PENDING_RELEASE' && <span className="flex items-center"><CheckCircle2 className="w-3 h-3 mr-1 text-green-500" /> 7-day period complete</span>}
                         {item.status === 'RELEASED' && <span className="flex items-center"><CheckCircle2 className="w-3 h-3 mr-1 text-green-500" /> Transaction completed</span>}
@@ -241,7 +313,7 @@ export default function AdminEscrowPage() {
                      <div className="flex space-x-2">
                         {item.status === 'DISPUTED' && (
                             <DialogTrigger asChild>
-                                <Button variant="destructive" className="rounded-full text-sm">Resolve Dispute</Button>
+                                <Button variant="destructive" className="rounded-full text-sm" onClick={() => handleResolveClick(item.id)}>Resolve Dispute</Button>
                             </DialogTrigger>
                         )}
                         {item.status === 'ACTIVE' && <>
@@ -265,7 +337,7 @@ export default function AdminEscrowPage() {
           </div>
         </main>
       </div>
-      <DisputeModal />
+      <DisputeModal disputeDetails={disputeDetails} />
     </Dialog>
   );
 }
