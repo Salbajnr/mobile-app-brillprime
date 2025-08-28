@@ -43,9 +43,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/db';
-import { supportTickets, users } from '@/lib/db/schema';
+import { supportTickets } from '@/lib/db/schema';
 import Link from 'next/link';
-import { eq, or, ilike } from 'drizzle-orm';
+import { eq, or, ilike, and } from 'drizzle-orm';
 
 const getPriorityBadgeVariant = (priority: string) => {
   switch (priority) {
@@ -82,7 +82,8 @@ export default function AdminSupportPage() {
 
   useEffect(() => {
     async function fetchTickets() {
-      const statusFilter = activeTab !== 'all' ? eq(supportTickets.status, activeTab.toUpperCase()) : undefined;
+      const statusFilter = activeTab !== 'all' ? eq(supportTickets.status, activeTab.toUpperCase() as any) : undefined;
+      
       const searchFilter = searchTerm ? or(
         ilike(supportTickets.ticketNumber, `%${searchTerm}%`),
         ilike(supportTickets.subject, `%${searchTerm}%`),
@@ -90,11 +91,19 @@ export default function AdminSupportPage() {
         ilike(supportTickets.email, `%${searchTerm}%`),
       ) : undefined;
       
-      const whereCondition = statusFilter && searchFilter 
-        ? or(statusFilter, searchFilter)
-        : statusFilter || searchFilter;
+      let whereCondition;
+      if (statusFilter && searchFilter) {
+        whereCondition = and(statusFilter, searchFilter);
+      } else {
+        whereCondition = statusFilter || searchFilter;
+      }
+      
+      const query = db.select().from(supportTickets);
+      if(whereCondition) {
+        query.where(whereCondition);
+      }
 
-      const result = await db.select().from(supportTickets).where(whereCondition);
+      const result = await query;
       setTickets(result);
     }
     fetchTickets();
@@ -106,7 +115,7 @@ export default function AdminSupportPage() {
         <TabsList>
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="open">Open</TabsTrigger>
-          <TabsTrigger value="in-progress">In Progress</TabsTrigger>
+          <TabsTrigger value="in_progress">In Progress</TabsTrigger>
           <TabsTrigger value="closed">Closed</TabsTrigger>
         </TabsList>
         <div className="ml-auto flex items-center gap-2">
@@ -125,7 +134,7 @@ export default function AdminSupportPage() {
           <div className="relative pt-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input 
-              placeholder="Search tickets by ID, subject, name, email..." 
+              placeholder="Search by ticket #, subject, name, or email..." 
               className="pl-10 rounded-full" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
