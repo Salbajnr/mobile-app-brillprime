@@ -31,54 +31,8 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import Image from 'next/image';
-
-const users = [
-  {
-    name: 'John Doe',
-    email: 'john.doe@email.com',
-    avatar: 'https://picsum.photos/40/40?random=1',
-    role: 'Consumer',
-    status: 'Active',
-    lastLogin: '2024-07-29 10:30 AM',
-    kycStatus: 'Verified',
-  },
-  {
-    name: 'Jane Smith',
-    email: 'jane.smith@email.com',
-    avatar: 'https://picsum.photos/40/40?random=2',
-    role: 'Merchant',
-    status: 'Active',
-    lastLogin: '2024-07-29 09:45 AM',
-    kycStatus: 'Verified',
-  },
-  {
-    name: 'Robert Johnson',
-    email: 'robert.j@email.com',
-    avatar: 'https://picsum.photos/40/40?random=3',
-    role: 'Driver',
-    status: 'Inactive',
-    lastLogin: '2024-07-25 03:15 PM',
-    kycStatus: 'Verified',
-  },
-  {
-    name: 'Emily White',
-    email: 'emily.w@email.com',
-    avatar: 'https://picsum.photos/40/40?random=4',
-    role: 'Consumer',
-    status: 'Active',
-    lastLogin: '2024-07-29 11:00 AM',
-    kycStatus: 'Pending',
-  },
-  {
-    name: 'Michael Brown',
-    email: 'michael.b@email.com',
-    avatar: 'https://picsum.photos/40/40?random=5',
-    role: 'Merchant',
-    status: 'Suspended',
-    lastLogin: '2024-07-20 08:00 AM',
-    kycStatus: 'Rejected',
-  },
-];
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
 
 const getStatusBadgeVariant = (status: string) => {
   switch (status) {
@@ -106,7 +60,9 @@ const getKycBadgeVariant = (status: string) => {
   }
 };
 
-export default function AdminUserManagementPage() {
+export default async function AdminUserManagementPage() {
+  const userList = await db.select().from(users);
+
   return (
     <Tabs defaultValue="all">
       <div className="flex items-center">
@@ -149,20 +105,20 @@ export default function AdminUserManagementPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
+                {userList.map((user) => (
                   <TableRow key={user.email}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Image
-                          src={user.avatar}
-                          alt={user.name}
+                          src={user.profilePicture || `https://picsum.photos/40/40?random=${user.id}`}
+                          alt={user.fullName}
                           width={40}
                           height={40}
                           className="rounded-full"
                           data-ai-hint="user avatar"
                         />
                         <div>
-                          <div className="font-medium">{user.name}</div>
+                          <div className="font-medium">{user.fullName}</div>
                           <div className="text-sm text-muted-foreground">
                             {user.email}
                           </div>
@@ -171,16 +127,16 @@ export default function AdminUserManagementPage() {
                     </TableCell>
                     <TableCell>{user.role}</TableCell>
                     <TableCell>
-                      <Badge variant={getStatusBadgeVariant(user.status) as any}>
-                        {user.status}
+                      <Badge variant={getStatusBadgeVariant(user.isActive ? 'Active' : 'Inactive') as any}>
+                        {user.isActive ? 'Active' : 'Inactive'}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getKycBadgeVariant(user.kycStatus) as any}>
-                        {user.kycStatus}
+                      <Badge variant={getKycBadgeVariant(user.emailVerified ? 'Verified' : 'Pending') as any}>
+                        {user.emailVerified ? 'Verified' : 'Pending'}
                       </Badge>
                     </TableCell>
-                    <TableCell>{user.lastLogin}</TableCell>
+                    <TableCell>{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
