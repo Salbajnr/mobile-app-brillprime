@@ -40,7 +40,7 @@ const initialState: FormState = {
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" className="w-full" disabled={pending}>
+    <Button type="submit" className="w-full rounded-full" disabled={pending}>
       {pending ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -81,8 +81,8 @@ export default function DemandPlanningPage() {
   }, [state, toast]);
 
   return (
-    <div className="grid gap-8 md:grid-cols-2">
-      <Card>
+    <div className="grid gap-6 md:grid-cols-2">
+      <Card className="rounded-2xl">
         <CardHeader>
           <CardTitle>Demand Planning Tool</CardTitle>
           <CardDescription>
@@ -97,6 +97,7 @@ export default function DemandPlanningPage() {
                 id="location"
                 name="location"
                 placeholder="e.g., Downtown, Financial District"
+                className="rounded-xl"
               />
               {state.errors?.location && (
                 <p className="text-sm text-destructive">
@@ -107,7 +108,7 @@ export default function DemandPlanningPage() {
             <div className="space-y-2">
               <Label htmlFor="fuelType">Fuel Type</Label>
               <Select name="fuelType">
-                <SelectTrigger>
+                <SelectTrigger className="rounded-xl">
                   <SelectValue placeholder="Select fuel type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -129,6 +130,7 @@ export default function DemandPlanningPage() {
                 name="currentDemand"
                 type="number"
                 placeholder="e.g., 5000"
+                className="rounded-xl"
               />
                {state.errors?.currentDemand && (
                 <p className="text-sm text-destructive">
@@ -142,13 +144,12 @@ export default function DemandPlanningPage() {
                 id="historicalData"
                 name="historicalData"
                 placeholder="Describe historical demand patterns. e.g., 'High demand on weekday mornings, peak on Friday evenings. Low on weekends.'"
-                className="min-h-[100px]"
+                className="min-h-[100px] rounded-xl"
               />
                {state.errors?.historicalData && (
                 <p className="text-sm text-destructive">
                   {state.errors.historicalData[0]}
-                </p>
-              )}
+                </p>              )}
             </div>
           </CardContent>
           <CardFooter>
@@ -156,7 +157,7 @@ export default function DemandPlanningPage() {
           </CardFooter>
         </form>
       </Card>
-      <Card className="flex flex-col">
+      <Card className="flex flex-col rounded-2xl">
         <CardHeader>
           <CardTitle>Prediction Results</CardTitle>
           <CardDescription>
@@ -167,7 +168,7 @@ export default function DemandPlanningPage() {
           {state.data ? (
             <div className="space-y-6">
               <div className="flex items-start gap-4">
-                <div className="rounded-full bg-primary/10 p-3">
+                <div className="rounded-full bg-blue-100 p-3">
                   <Clock className="h-6 w-6 text-primary" />
                 </div>
                 <div>
@@ -178,7 +179,7 @@ export default function DemandPlanningPage() {
                 </div>
               </div>
               <div className="flex items-start gap-4">
-                <div className="rounded-full bg-primary/10 p-3">
+                <div className="rounded-full bg-blue-100 p-3">
                   <Fuel className="h-6 w-6 text-primary" />
                 </div>
                 <div>
@@ -191,7 +192,7 @@ export default function DemandPlanningPage() {
                 </div>
               </div>
               <div className="flex items-start gap-4">
-                <div className="rounded-full bg-primary/10 p-3">
+                <div className="rounded-full bg-blue-100 p-3">
                   <Lightbulb className="h-6 w-6 text-primary" />
                 </div>
                 <div>
@@ -203,7 +204,7 @@ export default function DemandPlanningPage() {
               </div>
             </div>
           ) : (
-            <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20">
+            <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-gray-50">
               <div className="text-center text-muted-foreground">
                 <BrainCircuit className="mx-auto h-12 w-12" />
                 <p className="mt-4">Your prediction results will be shown here.</p>

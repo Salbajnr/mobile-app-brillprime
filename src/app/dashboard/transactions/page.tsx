@@ -1,3 +1,4 @@
+// src/app/dashboard/transactions/page.tsx
 import { MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const transactions = [
     {
@@ -32,7 +32,7 @@ const transactions = [
       type: "E-Market",
       status: "Paid",
       date: "2024-05-21",
-      amount: "$150.00",
+      amount: "₦15,000.00",
       email: "john.doe@email.com",
     },
     {
@@ -41,7 +41,7 @@ const transactions = [
       type: "Fuel",
       status: "Paid",
       date: "2024-05-20",
-      amount: "$45.50",
+      amount: "₦4,550.00",
       email: "jane.smith@email.com",
     },
     {
@@ -50,7 +50,7 @@ const transactions = [
       type: "Toll",
       status: "Paid",
       date: "2024-05-19",
-      amount: "$12.75",
+      amount: "₦1,275.00",
       email: "robert.j@email.com",
     },
     {
@@ -59,7 +59,7 @@ const transactions = [
       type: "E-Market",
       status: "Pending",
       date: "2024-05-21",
-      amount: "$250.00",
+      amount: "₦25,000.00",
       email: "emily.w@email.com",
     },
     {
@@ -68,7 +68,7 @@ const transactions = [
       type: "Fuel",
       status: "Failed",
       date: "2024-05-18",
-      amount: "$60.00",
+      amount: "₦6,000.00",
       email: "michael.b@email.com",
     },
 ];
@@ -76,7 +76,7 @@ const transactions = [
 const getBadgeVariant = (status: string) => {
     switch (status) {
       case 'Paid':
-        return 'default';
+        return 'success';
       case 'Pending':
         return 'secondary';
       case 'Failed':
@@ -88,11 +88,11 @@ const getBadgeVariant = (status: string) => {
 
 export default function TransactionsPage() {
   return (
-    <Card>
+    <Card className="rounded-2xl shadow-sm">
       <CardHeader>
-        <CardTitle>Transactions</CardTitle>
+        <CardTitle>All Transactions</CardTitle>
         <CardDescription>
-          A list of all recent transactions.
+          A detailed list of all recent transactions across the platform.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -120,7 +120,7 @@ export default function TransactionsPage() {
                 </TableCell>
                 <TableCell>{transaction.type}</TableCell>
                 <TableCell>
-                  <Badge variant={getBadgeVariant(transaction.status)}>
+                  <Badge variant={getBadgeVariant(transaction.status) as any}>
                     {transaction.status}
                   </Badge>
                 </TableCell>
