@@ -24,69 +24,37 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-const transactions = [
-    {
-      id: "TRX001",
-      customer: "John Doe",
-      type: "E-Market",
-      status: "Paid",
-      date: "2024-05-21",
-      amount: "₦15,000.00",
-      email: "john.doe@email.com",
-    },
-    {
-      id: "TRX002",
-      customer: "Jane Smith",
-      type: "Fuel",
-      status: "Paid",
-      date: "2024-05-20",
-      amount: "₦4,550.00",
-      email: "jane.smith@email.com",
-    },
-    {
-      id: "TRX003",
-      customer: "Robert Johnson",
-      type: "Toll",
-      status: "Paid",
-      date: "2024-05-19",
-      amount: "₦1,275.00",
-      email: "robert.j@email.com",
-    },
-    {
-      id: "TRX004",
-      customer: "Emily White",
-      type: "E-Market",
-      status: "Pending",
-      date: "2024-05-21",
-      amount: "₦25,000.00",
-      email: "emily.w@email.com",
-    },
-    {
-      id: "TRX005",
-      customer: "Michael Brown",
-      type: "Fuel",
-      status: "Failed",
-      date: "2024-05-18",
-      amount: "₦6,000.00",
-      email: "michael.b@email.com",
-    },
-];
+import { db } from '@/lib/db';
+import { transactions, users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 const getBadgeVariant = (status: string) => {
     switch (status) {
-      case 'Paid':
+      case 'COMPLETED':
         return 'success';
-      case 'Pending':
+      case 'PENDING':
         return 'secondary';
-      case 'Failed':
+      case 'FAILED':
         return 'destructive';
       default:
         return 'outline';
     }
 }
 
-export default function AdminTransactionsPage() {
+export default async function AdminTransactionsPage() {
+  const transactionList = await db.select({
+      id: transactions.id,
+      amount: transactions.amount,
+      currency: transactions.currency,
+      paymentMethod: transactions.paymentMethod,
+      paymentStatus: transactions.paymentStatus,
+      createdAt: transactions.createdAt,
+      user: {
+        fullName: users.fullName,
+        email: users.email
+      }
+  }).from(transactions).leftJoin(users, eq(transactions.userId, users.id));
+
   return (
     <Card className="rounded-2xl shadow-sm">
       <CardHeader>
@@ -110,22 +78,22 @@ export default function AdminTransactionsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transactions.map((transaction) => (
+            {transactionList.map((transaction) => (
               <TableRow key={transaction.id}>
                 <TableCell>
-                  <div className="font-medium">{transaction.customer}</div>
+                  <div className="font-medium">{transaction.user?.fullName}</div>
                   <div className="text-sm text-muted-foreground">
-                    {transaction.email}
+                    {transaction.user?.email}
                   </div>
                 </TableCell>
-                <TableCell>{transaction.type}</TableCell>
+                <TableCell>{transaction.paymentMethod}</TableCell>
                 <TableCell>
-                  <Badge variant={getBadgeVariant(transaction.status) as any}>
-                    {transaction.status}
+                  <Badge variant={getBadgeVariant(transaction.paymentStatus || 'PENDING') as any}>
+                    {transaction.paymentStatus}
                   </Badge>
                 </TableCell>
-                <TableCell>{transaction.date}</TableCell>
-                <TableCell className="text-right">{transaction.amount}</TableCell>
+                <TableCell>{transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString() : ''}</TableCell>
+                <TableCell className="text-right">{transaction.currency} {transaction.amount}</TableCell>
                 <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
