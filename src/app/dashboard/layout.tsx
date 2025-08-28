@@ -49,7 +49,7 @@ import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/dashboard', icon: Home, label: 'Dashboard' },
-  { href: '#', icon: Users, label: 'User Management', badge: 23 },
+  { href: '/dashboard/user-management', icon: Users, label: 'User Management', badge: 23 },
   { href: '/dashboard/escrow', icon: Package, label: 'Escrow Management', badge: 7 },
   { href: '/dashboard/transactions', icon: ArrowRightLeft, label: 'Transactions', badge: 3 },
   { href: '#', icon: Ticket, label: 'Support & Tickets', badge: 15 },
@@ -127,6 +127,8 @@ export default function DashboardLayout({
             return 'AI-powered demand forecasting';
         case 'escrow':
             return 'Monitor and manage payment escrow transactions';
+        case 'user management':
+            return 'Manage all users on the platform';
         default:
             return 'Welcome to your dashboard';
     }
