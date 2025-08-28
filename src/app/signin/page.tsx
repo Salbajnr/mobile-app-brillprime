@@ -46,11 +46,11 @@ export default function SigninPage() {
   
   useEffect(() => {
     if (state.message) {
-      if (state.errors) {
+      if (state.errors || state.message === 'Invalid email or password.' || state.message === 'An unexpected error occurred.') {
         toast({ variant: 'destructive', title: 'Error', description: state.message });
       } else {
         toast({ title: 'Success', description: state.message });
-        router.push('/dashboard'); // Or wherever you want to redirect after login
+        router.push('/admin');
       }
     }
   }, [state, toast, router]);
@@ -95,7 +95,7 @@ export default function SigninPage() {
             </div>
              <div className="flex items-center">
                 <Link
-                  href="#"
+                  href="/forgot-password"
                   className="ml-auto inline-block text-sm text-primary underline"
                 >
                   Forgot password?
