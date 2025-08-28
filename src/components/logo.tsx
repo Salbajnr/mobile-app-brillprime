@@ -5,11 +5,12 @@ export function Logo({ className, isCollapsed = false }: { className?: string, i
   return (
     <div className={cn("flex items-center gap-3", className)}>
       <Image
-        src="/images/logo.png"
+        src="https://picsum.photos/40/40"
         alt="BrillPrime Logo"
         width={40}
         height={40}
-        className="shrink-0"
+        className="shrink-0 rounded-full"
+        data-ai-hint="logo"
       />
       {!isCollapsed && (
         <div className="flex flex-col">
