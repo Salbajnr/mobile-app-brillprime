@@ -784,6 +784,18 @@ export const systemMetrics = pgTable('system_metrics', {
   createdAt: timestamp('created_at').defaultNow()
 });
 
+export const demandPredictions = pgTable('demand_predictions', {
+  id: serial('id').primaryKey(),
+  location: varchar('location', { length: 255 }).notNull(),
+  fuelType: varchar('fuel_type', { length: 50 }).notNull(),
+  currentDemand: decimal('current_demand', { precision: 10, scale: 2 }).notNull(),
+  historicalData: text('historical_data').notNull(),
+  optimalTime: varchar('optimal_time', { length: 50 }).notNull(),
+  predictedDemand: decimal('predicted_demand', { precision: 10, scale: 2 }).notNull(),
+  reasoning: text('reasoning').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 // Export types for TypeScript
 export type SelectUser = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -878,6 +890,11 @@ export const insertQrReceiptScanSchema = createInsertSchema(qrReceiptScans).omit
   createdAt: true
 });
 
+export const insertDemandPredictionSchema = createInsertSchema(demandPredictions).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Insert types
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
@@ -890,3 +907,6 @@ export type InsertQrPaymentReceipt = z.infer<typeof insertQrPaymentReceiptSchema
 
 export type QrReceiptScan = typeof qrReceiptScans.$inferSelect;
 export type InsertQrReceiptScan = z.infer<typeof insertQrReceiptScanSchema>;
+
+export type DemandPrediction = typeof demandPredictions.$inferSelect;
+export type InsertDemandPrediction = z.infer<typeof insertDemandPredictionSchema>;
