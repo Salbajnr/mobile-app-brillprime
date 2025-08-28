@@ -50,10 +50,10 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { href: '/dashboard', icon: Home, label: 'Dashboard' },
   { href: '#', icon: Users, label: 'User Management', badge: 23 },
-  { href: '#', icon: Package, label: 'Escrow Management', badge: 7 },
+  { href: '/dashboard/escrow', icon: Package, label: 'Escrow Management', badge: 7 },
   { href: '/dashboard/transactions', icon: ArrowRightLeft, label: 'Transactions', badge: 3 },
   { href: '#', icon: Ticket, label: 'Support & Tickets', badge: 15 },
-  { href: '#', icon: BarChart, label: 'Platform Analytics' },
+  { href: '/dashboard/demand-planning', icon: BarChart, label: 'Demand Planning' },
   { href: '#', icon: ShieldCheck, label: 'Security & Fraud', pulse: true },
 ];
 
@@ -117,6 +117,22 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const breadcrumbTitle = pathname.split('/').pop()?.replace(/-/g, ' ') || 'Dashboard';
 
+  const getBreadcrumbDescription = (title: string) => {
+    switch (title) {
+        case 'dashboard':
+            return 'Platform overview and system monitoring';
+        case 'transactions':
+            return 'Review and manage all transactions';
+        case 'demand planning':
+            return 'AI-powered demand forecasting';
+        case 'escrow':
+            return 'Monitor and manage payment escrow transactions';
+        default:
+            return 'Welcome to your dashboard';
+    }
+  }
+
+
   return (
     <TooltipProvider>
       <div className="flex min-h-screen w-full flex-col">
@@ -177,11 +193,7 @@ export default function DashboardLayout({
                 {breadcrumbTitle}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {
-                    breadcrumbTitle === 'dashboard' ? 'Platform overview and system monitoring' :
-                    breadcrumbTitle === 'transactions' ? 'Review and manage all transactions' :
-                    'AI-powered demand forecasting'
-                }
+                {getBreadcrumbDescription(breadcrumbTitle)}
               </p>
             </div>
             
