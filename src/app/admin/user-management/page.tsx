@@ -1,4 +1,6 @@
 
+'use client';
+
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,37 +35,71 @@ import {
 import Image from 'next/image';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
+import { useEffect, useState } from 'react';
+import type { SelectUser } from '@/lib/db/schema';
+import { UserForm } from './user-form';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
-const getStatusBadgeVariant = (status: string) => {
+const getStatusBadgeVariant = (status: boolean) => {
   switch (status) {
-    case 'Active':
+    case true:
       return 'success';
-    case 'Inactive':
+    case false:
       return 'secondary';
-    case 'Suspended':
-      return 'destructive';
     default:
       return 'outline';
   }
 };
 
-const getKycBadgeVariant = (status: string) => {
+const getKycBadgeVariant = (status: boolean) => {
   switch (status) {
-    case 'Verified':
+    case true:
       return 'success';
-    case 'Pending':
+    case false:
       return 'warning';
-    case 'Rejected':
-      return 'destructive';
     default:
       return 'outline';
   }
 };
 
-export default async function AdminUserManagementPage() {
-  const userList = await db.select().from(users);
+export default function AdminUserManagementPage() {
+  const [userList, setUserList] = useState<SelectUser[]>([]);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<SelectUser | null>(null);
+
+  async function fetchUsers() {
+    const result = await db.select().from(users);
+    setUserList(result);
+  }
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleFormSubmit = () => {
+    setIsFormOpen(false);
+    setSelectedUser(null);
+    fetchUsers(); // Refetch users after submission
+  };
+
+  const handleEdit = (user: SelectUser) => {
+    setSelectedUser(user);
+    setIsFormOpen(true);
+  };
+  
+  const handleAdd = () => {
+    setSelectedUser(null);
+    setIsFormOpen(true);
+  };
 
   return (
+    <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
     <Tabs defaultValue="all">
       <div className="flex items-center">
         <TabsList>
@@ -76,10 +112,12 @@ export default async function AdminUserManagementPage() {
           <Button size="sm" variant="outline">
             Export
           </Button>
-          <Button size="sm">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add User
-          </Button>
+          <DialogTrigger asChild>
+            <Button size="sm" onClick={handleAdd}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add User
+            </Button>
+          </DialogTrigger>
         </div>
       </div>
       <TabsContent value="all">
@@ -111,7 +149,7 @@ export default async function AdminUserManagementPage() {
                       <div className="flex items-center gap-3">
                         <Image
                           src={user.profilePicture || `https://picsum.photos/40/40?random=${user.id}`}
-                          alt={user.fullName}
+                          alt={user.fullName || 'User avatar'}
                           width={40}
                           height={40}
                           className="rounded-full"
@@ -127,12 +165,12 @@ export default async function AdminUserManagementPage() {
                     </TableCell>
                     <TableCell>{user.role}</TableCell>
                     <TableCell>
-                      <Badge variant={getStatusBadgeVariant(user.isActive ? 'Active' : 'Inactive') as any}>
+                      <Badge variant={getStatusBadgeVariant(user.isActive) as any}>
                         {user.isActive ? 'Active' : 'Inactive'}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getKycBadgeVariant(user.emailVerified ? 'Verified' : 'Pending') as any}>
+                      <Badge variant={getKycBadgeVariant(user.emailVerified) as any}>
                         {user.emailVerified ? 'Verified' : 'Pending'}
                       </Badge>
                     </TableCell>
@@ -148,7 +186,7 @@ export default async function AdminUserManagementPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem>View Details</DropdownMenuItem>
-                          <DropdownMenuItem>Edit User</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleEdit(user)}>Edit User</DropdownMenuItem>
                           <DropdownMenuItem>Suspend User</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -161,5 +199,12 @@ export default async function AdminUserManagementPage() {
         </Card>
       </TabsContent>
     </Tabs>
+    <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{selectedUser ? 'Edit User' : 'Add New User'}</DialogTitle>
+        </DialogHeader>
+        <UserForm currentUser={selectedUser} onSubmit={handleFormSubmit} />
+      </DialogContent>
+    </Dialog>
   );
 }
