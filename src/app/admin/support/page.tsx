@@ -1,5 +1,4 @@
-
-'use client'
+'use client';
 
 import {
   File,
@@ -44,10 +43,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/db';
-import { supportTickets } from '@/lib/db/schema';
-import type { supportTickets as SupportTicketType } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-
+import { supportTickets, users } from '@/lib/db/schema';
+import Link from 'next/link';
+import { eq, or, ilike } from 'drizzle-orm';
 
 const getPriorityBadgeVariant = (priority: string) => {
   switch (priority) {
@@ -79,17 +77,31 @@ const getStatusBadgeVariant = (status: string) => {
 
 export default function AdminSupportPage() {
   const [tickets, setTickets] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     async function fetchTickets() {
-        const result = await db.select().from(supportTickets);
-        setTickets(result);
+      const statusFilter = activeTab !== 'all' ? eq(supportTickets.status, activeTab.toUpperCase()) : undefined;
+      const searchFilter = searchTerm ? or(
+        ilike(supportTickets.ticketNumber, `%${searchTerm}%`),
+        ilike(supportTickets.subject, `%${searchTerm}%`),
+        ilike(supportTickets.name, `%${searchTerm}%`),
+        ilike(supportTickets.email, `%${searchTerm}%`),
+      ) : undefined;
+      
+      const whereCondition = statusFilter && searchFilter 
+        ? or(statusFilter, searchFilter)
+        : statusFilter || searchFilter;
+
+      const result = await db.select().from(supportTickets).where(whereCondition);
+      setTickets(result);
     }
     fetchTickets();
-  }, [])
+  }, [activeTab, searchTerm]);
 
   return (
-    <Tabs defaultValue="all">
+    <Tabs defaultValue="all" onValueChange={setActiveTab}>
       <div className="flex items-center pb-4">
         <TabsList>
           <TabsTrigger value="all">All</TabsTrigger>
@@ -98,25 +110,6 @@ export default function AdminSupportPage() {
           <TabsTrigger value="closed">Closed</TabsTrigger>
         </TabsList>
         <div className="ml-auto flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <ListFilter className="mr-2 h-4 w-4" />
-                Filter
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem checked>Open</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>In Progress</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Closed</DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" size="sm">
-            <File className="mr-2 h-4 w-4" />
-            Export
-          </Button>
           <Button size="sm">
             <PlusCircle className="mr-2 h-4 w-4" />
             New Ticket
@@ -130,8 +123,13 @@ export default function AdminSupportPage() {
             Manage and respond to customer support tickets.
           </CardDescription>
           <div className="relative pt-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input placeholder="Search tickets..." className="pl-10 rounded-full" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input 
+              placeholder="Search tickets by ID, subject, name, email..." 
+              className="pl-10 rounded-full" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -150,22 +148,39 @@ export default function AdminSupportPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tickets.map((ticket) => (
+              {tickets.map(ticket => (
                 <TableRow key={ticket.id}>
-                  <TableCell className="font-medium">{ticket.ticketNumber}</TableCell>
+                  <TableCell className="font-medium">
+                    {ticket.ticketNumber}
+                  </TableCell>
                   <TableCell>{ticket.subject}</TableCell>
-                  <TableCell>{ticket.name}</TableCell>
                   <TableCell>
-                    <Badge variant={getPriorityBadgeVariant(ticket.priority || 'NORMAL') as any}>
+                    <div className="font-medium">{ticket.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {ticket.email}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        getPriorityBadgeVariant(
+                          ticket.priority || 'NORMAL'
+                        ) as any
+                      }
+                    >
                       {ticket.priority}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getStatusBadgeVariant(ticket.status || 'OPEN') as any}>
+                    <Badge
+                      variant={getStatusBadgeVariant(ticket.status || 'OPEN') as any}
+                    >
                       {ticket.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{new Date(ticket.updatedAt || '').toLocaleString()}</TableCell>
+                  <TableCell>
+                    {new Date(ticket.updatedAt || '').toLocaleString()}
+                  </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -180,7 +195,11 @@ export default function AdminSupportPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>View Ticket</DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/admin/support/${ticket.id}`}>
+                            View Ticket
+                          </Link>
+                        </DropdownMenuItem>
                         <DropdownMenuItem>Assign to Agent</DropdownMenuItem>
                         <DropdownMenuItem>Close Ticket</DropdownMenuItem>
                       </DropdownMenuContent>
@@ -191,11 +210,12 @@ export default function AdminSupportPage() {
             </TableBody>
           </Table>
         </CardContent>
-         <CardFooter>
-            <div className="text-xs text-muted-foreground">
-              Showing <strong>1-{tickets.length}</strong> of <strong>{tickets.length}</strong> tickets
-            </div>
-          </CardFooter>
+        <CardFooter>
+          <div className="text-xs text-muted-foreground">
+            Showing <strong>1-{tickets.length}</strong> of{' '}
+            <strong>{tickets.length}</strong> tickets
+          </div>
+        </CardFooter>
       </Card>
     </Tabs>
   );

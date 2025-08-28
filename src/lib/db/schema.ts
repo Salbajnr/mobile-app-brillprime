@@ -1,8 +1,7 @@
-
-
 import { pgTable, serial, varchar, text, timestamp, boolean, integer, decimal, jsonb, pgEnum, index, uniqueIndex, foreignKey } from "drizzle-orm/pg-core";
 import { z } from 'zod';
 import { createInsertSchema } from 'drizzle-zod';
+import { relations } from "drizzle-orm";
 
 // Define enums
 export const roleEnum = pgEnum('role', ['CONSUMER', 'MERCHANT', 'DRIVER', 'ADMIN']);
@@ -11,6 +10,9 @@ export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'CONFIRMED', '
 export const paymentStatusEnum = pgEnum('payment_status', ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']);
 export const escrowStatusEnum = pgEnum('escrow_status', ['PENDING', 'HELD', 'RELEASED', 'DISPUTED', 'REFUNDED', 'CANCELLED']);
 export const disputeStatusEnum = pgEnum('dispute_status', ['OPEN', 'UNDER_REVIEW', 'RESOLVED', 'CLOSED']);
+export const supportStatusEnum = pgEnum('support_status', ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']);
+export const supportPriorityEnum = pgEnum('support_priority', ['LOW', 'NORMAL', 'HIGH', 'URGENT']);
+export const responderTypeEnum = pgEnum('responder_type', ['ADMIN', 'USER']);
 
 
 // Users table (Enhanced)
@@ -652,9 +654,9 @@ export const supportTickets = pgTable('support_tickets', {
   email: varchar('email', { length: 255 }).notNull(),
   subject: varchar('subject', { length: 500 }).notNull(),
   message: text('message').notNull(),
-  status: varchar('status', { length: 20 }).default('OPEN'), // OPEN, IN_PROGRESS, RESOLVED, CLOSED
-  priority: varchar('priority', { length: 20 }).default('NORMAL'), // LOW, NORMAL, HIGH, URGENT
-  assignedTo: integer('assigned_to').references(() => adminUsers.id),
+  status: supportStatusEnum("status").default('OPEN'),
+  priority: supportPriorityEnum("priority").default('NORMAL'),
+  assignedTo: integer('assigned_to').references(() => users.id),
   adminNotes: text('admin_notes'),
   resolution: text('resolution'),
   createdAt: timestamp('created_at').defaultNow(),
@@ -662,16 +664,34 @@ export const supportTickets = pgTable('support_tickets', {
   resolvedAt: timestamp('resolved_at')
 });
 
+export const supportTicketsRelations = relations(supportTickets, ({ one }) => ({
+	user: one(users, {
+		fields: [supportTickets.userId],
+		references: [users.id],
+	}),
+    assignedToUser: one(users, {
+        fields: [supportTickets.assignedTo],
+        references: [users.id],
+    })
+}));
+
 // Support responses table (from original, unchanged)
 export const supportResponses = pgTable('support_responses', {
   id: serial('id').primaryKey(),
   ticketId: integer('ticket_id').references(() => supportTickets.id).notNull(),
   responderId: integer('responder_id').notNull(),
-  responderType: varchar('responder_type', { length: 20 }).notNull(), // ADMIN, USER
+  responderType: responderTypeEnum('responder_type').notNull(), // ADMIN, USER
   message: text('message').notNull(),
   attachments: text('attachments'), // JSON array of file URLs
   createdAt: timestamp('created_at').defaultNow()
 });
+
+export const supportResponsesRelations = relations(supportResponses, ({ one }) => ({
+    responder: one(users, {
+        fields: [supportResponses.responderId],
+        references: [users.id],
+    }),
+}));
 
 // Audit Logs table (New)
 export const auditLogs = pgTable('audit_logs', {
@@ -831,6 +851,7 @@ export type SelectDisputeEvidence = typeof disputeEvidence.$inferSelect;
 export type InsertDisputeEvidence = typeof disputeEvidence.$inferInsert;
 export type SelectEscrowTransaction = typeof escrowTransactions.$inferSelect;
 export type InsertEscrowTransaction = typeof escrowTransactions.$inferInsert;
+export type SelectSupportTicket = typeof supportTickets.$inferSelect;
 
 // Add validation schemas for forms (basic exports for compatibility)
 export const signInSchema = z.object({
@@ -942,4 +963,3 @@ export type InsertQrReceiptScan = z.infer<typeof insertQrReceiptScanSchema>;
 
 export type DemandPrediction = typeof demandPredictions.$inferSelect;
 export type InsertDemandPrediction = z.infer<typeof insertDemandPredictionSchema>;
-
