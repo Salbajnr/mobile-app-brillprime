@@ -51,7 +51,7 @@ export default function LoginPage() {
               <Input id="password" type="password" required className="rounded-xl" />
             </div>
             <Button asChild className="w-full rounded-3xl bg-primary text-primary-foreground hover:bg-primary/90">
-              <Link href="/dashboard">Login</Link>
+              <Link href="/admin">Login</Link>
             </Button>
           </form>
           <div className="mt-4 text-center text-sm text-muted-foreground">
