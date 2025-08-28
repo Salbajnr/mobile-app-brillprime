@@ -1,6 +1,4 @@
 
-'use client';
-
 import {
   Users,
   Package,
@@ -16,54 +14,14 @@ import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
 import Link from 'next/link';
-
-const kpiCards = [
-  {
-    title: 'Total Active Users',
-    value: '24,847',
-    change: '+12.5%',
-    breakdown: 'Consumers: 18,250 • Merchants: 4,100 • Drivers: 2,497',
-    icon: Users,
-    iconBg: 'bg-blue-100',
-    iconColor: 'text-primary',
-    badge: null,
-  },
-  {
-    title: 'Total Escrow Balance',
-    value: '₦12.4M',
-    change: '7 Pending',
-    breakdown: 'Active: ₦8.2M • Disputed: ₦4.2M',
-    icon: Package,
-    iconBg: 'bg-yellow-100',
-    iconColor: 'text-yellow-600',
-    badge: 'warning',
-  },
-  {
-    title: 'Daily Transaction Volume',
-    value: '₦156.8M',
-    change: 'Real-time',
-    breakdown: '2,847 transactions today',
-    icon: ArrowRightLeft,
-    iconBg: 'bg-orange-100',
-    iconColor: 'text-orange-600',
-    badge: 'info',
-  },
-  {
-    title: 'Support Tickets Today',
-    value: '48',
-    change: '15 Open',
-    breakdown: 'Avg response: 2.4 hours',
-    icon: Ticket,
-    iconBg: 'bg-red-100',
-    iconColor: 'text-red-600',
-    badge: 'destructive',
-  },
-];
+import { db } from '@/lib/db';
+import { users, escrowTransactions, transactions, supportTickets } from '@/lib/db/schema';
+import { eq, sql } from 'drizzle-orm';
+import { format, subDays } from 'date-fns';
 
 const recentActions = [
     { icon: ShieldAlert, color: "text-red-600", bgColor: "bg-red-100", title: "Merchant Account Suspended", description: "TechStore247 - Violation of terms • 5 min ago" },
@@ -88,7 +46,81 @@ const quickActions = [
 ];
 
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  const [
+    userStats,
+    escrowStats,
+    dailyVolume,
+    ticketStats
+  ] = await Promise.all([
+    db.select({
+      total: sql<number>`count(*)`,
+      consumers: sql<number>`count(*) filter (where ${users.role} = 'CONSUMER')`,
+      merchants: sql<number>`count(*) filter (where ${users.role} = 'MERCHANT')`,
+      drivers: sql<number>`count(*) filter (where ${users.role} = 'DRIVER')`,
+    }).from(users).where(eq(users.isActive, true)),
+
+    db.select({
+      totalBalance: sql<number>`sum(case when ${escrowTransactions.status} = 'HELD' then ${escrowTransactions.amount} else 0 end)`,
+      activeBalance: sql<number>`sum(case when ${escrowTransactions.status} = 'ACTIVE' then ${escrowTransactions.amount} else 0 end)`,
+      disputedBalance: sql<number>`sum(case when ${escrowTransactions.status} = 'DISPUTED' then ${escrowTransactions.amount} else 0 end)`,
+      disputedCount: sql<number>`count(*) filter (where ${escrowTransactions.status} = 'DISPUTED')`,
+    }).from(escrowTransactions),
+    
+    db.select({
+        total: sql<number>`sum(${transactions.amount})`,
+        count: sql<number>`count(*)`
+    }).from(transactions).where(sql`${transactions.createdAt} >= ${subDays(new Date(), 1)}`),
+
+    db.select({
+        openTickets: sql<number>`count(*) filter (where ${supportTickets.status} = 'OPEN')`,
+        inProgressTickets: sql<number>`count(*) filter (where ${supportTickets.status} = 'IN_PROGRESS')`
+    }).from(supportTickets)
+  ]);
+  
+  const kpiCards = [
+      {
+        title: 'Total Active Users',
+        value: Number(userStats[0].total).toLocaleString(),
+        change: null,
+        breakdown: `Consumers: ${Number(userStats[0].consumers).toLocaleString()} • Merchants: ${Number(userStats[0].merchants).toLocaleString()} • Drivers: ${Number(userStats[0].drivers).toLocaleString()}`,
+        icon: Users,
+        iconBg: 'bg-blue-100',
+        iconColor: 'text-primary',
+        badge: null,
+      },
+      {
+        title: 'Total Escrow Balance',
+        value: `₦${((Number(escrowStats[0].totalBalance) || 0) / 1000000).toFixed(1)}M`,
+        change: `${Number(escrowStats[0].disputedCount)} Disputed`,
+        breakdown: `Active: ₦${((Number(escrowStats[0].activeBalance) || 0) / 1000000).toFixed(1)}M • Disputed: ₦${((Number(escrowStats[0].disputedBalance) || 0) / 1000000).toFixed(1)}M`,
+        icon: Package,
+        iconBg: 'bg-yellow-100',
+        iconColor: 'text-yellow-600',
+        badge: 'warning',
+      },
+      {
+        title: 'Daily Transaction Volume',
+        value: `₦${((Number(dailyVolume[0].total) || 0) / 1000000).toFixed(1)}M`,
+        change: 'Real-time',
+        breakdown: `${Number(dailyVolume[0].count).toLocaleString()} transactions today`,
+        icon: ArrowRightLeft,
+        iconBg: 'bg-orange-100',
+        iconColor: 'text-orange-600',
+        badge: 'info',
+      },
+      {
+        title: 'Support Tickets Today',
+        value: `${Number(ticketStats[0].openTickets) + Number(ticketStats[0].inProgressTickets)}`,
+        change: `${Number(ticketStats[0].openTickets)} Open`,
+        breakdown: `In Progress: ${Number(ticketStats[0].inProgressTickets)}`,
+        icon: Ticket,
+        iconBg: 'bg-red-100',
+        iconColor: 'text-red-600',
+        badge: 'destructive',
+      },
+    ];
+
   return (
     <div className="flex flex-1 flex-col gap-6">
       {/* Alerts */}
@@ -176,7 +208,7 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-lg font-bold">Recent Admin Actions</CardTitle>
                     <Button variant="link" asChild className="text-primary">
-                      <Link href="/admin">View All</Link>
+                      <Link href="#">View All</Link>
                     </Button>
                 </div>
             </CardHeader>
@@ -256,3 +288,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    
