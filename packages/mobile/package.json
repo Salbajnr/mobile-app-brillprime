@@ -10,7 +10,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@brillprime/shared": "workspace:*",
+    "@brillprime/shared": "*",
     "expo": "~49.0.0",
     "react": "18.2.0",
     "react-native": "0.72.6",

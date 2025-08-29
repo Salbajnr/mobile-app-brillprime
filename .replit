@@ -18,7 +18,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm install --workspaces"
+args = "npm install"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
