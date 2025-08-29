@@ -1,10 +1,9 @@
-
 'use server';
 
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, ne } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 
 const signInSchema = z.object({
@@ -34,10 +33,11 @@ export async function signIn(prevState: FormState, formData: FormData): Promise<
       errors: validatedFields.error.flatten().fieldErrors,
     };
   }
-  
+
   const { email, password } = validatedFields.data;
 
   try {
+    // Query database for user
     const user = await db.query.users.findFirst({
         where: eq(users.email, email),
     });
