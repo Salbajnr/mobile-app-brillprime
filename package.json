@@ -65,7 +65,7 @@
     "@types/pg": "^8.11.6",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "drizzle-kit": "^0.24.2",
+    "drizzle-kit": "^0.31.4",
     "genkit-cli": "^1.14.1",
     "typescript": "5.9.2"
   }
