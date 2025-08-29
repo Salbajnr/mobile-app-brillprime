@@ -1,158 +1,174 @@
 
+import { auth, db, storage } from '@brillprime/shared/config/firebase';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  signOut,
+  User
+} from 'firebase/auth';
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  query, 
+  where, 
+  getDocs 
+} from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = __DEV__ 
-  ? 'http://localhost:5000/api' 
-  : 'https://your-production-api.replit.app/api';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 class ApiService {
-  private async getToken(): Promise<string | null> {
+  private static instance: ApiService;
+
+  static getInstance(): ApiService {
+    if (!ApiService.instance) {
+      ApiService.instance = new ApiService();
+    }
+    return ApiService.instance;
+  }
+
+  // Auth methods
+  async signIn(email: string, password: string): Promise<User> {
     try {
-      return await AsyncStorage.getItem('authToken');
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      await AsyncStorage.setItem('user_token', await userCredential.user.getIdToken());
+      return userCredential.user;
     } catch (error) {
-      console.error('Error getting token:', error);
-      return null;
+      throw new Error(`Sign in failed: ${error.message}`);
     }
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const token = await this.getToken();
-    
-    const config: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-        ...options.headers,
-      },
-      ...options,
-    };
+  async signUp(email: string, password: string, userData: any): Promise<User> {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Save user data to Firestore
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        email,
+        ...userData,
+        createdAt: new Date().toISOString()
+      });
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'API request failed');
+      await AsyncStorage.setItem('user_token', await userCredential.user.getIdToken());
+      return userCredential.user;
+    } catch (error) {
+      throw new Error(`Sign up failed: ${error.message}`);
     }
-
-    return response.json();
   }
 
-  // Authentication
-  async login(email: string, password: string) {
-    const response = await this.request<any>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (response.token) {
-      await AsyncStorage.setItem('authToken', response.token);
+  async signOut(): Promise<void> {
+    try {
+      await signOut(auth);
+      await AsyncStorage.removeItem('user_token');
+    } catch (error) {
+      throw new Error(`Sign out failed: ${error.message}`);
     }
-
-    return response;
   }
 
-  async register(userData: {
-    email: string;
-    password: string;
-    fullName: string;
-    phone?: string;
-    role?: string;
-  }) {
-    const response = await this.request<any>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
-
-    if (response.token) {
-      await AsyncStorage.setItem('authToken', response.token);
+  // Marketplace methods
+  async getProducts(): Promise<any[]> {
+    try {
+      const productsCollection = collection(db, 'products');
+      const querySnapshot = await getDocs(productsCollection);
+      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      throw new Error(`Failed to fetch products: ${error.message}`);
     }
-
-    return response;
   }
 
-  async logout() {
-    await AsyncStorage.removeItem('authToken');
+  async createOrder(orderData: any): Promise<string> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await AsyncStorage.getItem('user_token')}`
+        },
+        body: JSON.stringify(orderData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create order');
+      }
+
+      const result = await response.json();
+      return result.orderId;
+    } catch (error) {
+      throw new Error(`Failed to create order: ${error.message}`);
+    }
   }
 
-  // User
-  async getUserProfile() {
-    return this.request<any>('/user/profile');
+  // Fuel ordering methods
+  async orderFuel(fuelData: any): Promise<string> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/fuel/order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await AsyncStorage.getItem('user_token')}`
+        },
+        body: JSON.stringify(fuelData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to order fuel');
+      }
+
+      const result = await response.json();
+      return result.orderId;
+    } catch (error) {
+      throw new Error(`Failed to order fuel: ${error.message}`);
+    }
   }
 
-  async updateProfile(data: { fullName?: string; phone?: string }) {
-    return this.request<any>('/user/profile', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+  // Toll gate payment methods
+  async processTollPayment(qrData: string, amount: number): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/toll/payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await AsyncStorage.getItem('user_token')}`
+        },
+        body: JSON.stringify({ qrData, amount })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process toll payment');
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw new Error(`Failed to process toll payment: ${error.message}`);
+    }
   }
 
-  // Fuel
-  async getFuelTypes() {
-    return this.request<any>('/fuel/types');
+  // User profile methods
+  async getUserProfile(userId: string): Promise<any> {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        return { id: userDoc.id, ...userDoc.data() };
+      }
+      throw new Error('User not found');
+    } catch (error) {
+      throw new Error(`Failed to get user profile: ${error.message}`);
+    }
   }
 
-  async createFuelOrder(orderData: {
-    fuelTypeId: number;
-    quantity: number;
-    deliveryAddress: string;
-    deliveryTime?: string;
-  }) {
-    return this.request<any>('/fuel/order', {
-      method: 'POST',
-      body: JSON.stringify(orderData),
-    });
-  }
-
-  // Marketplace
-  async getProducts(params?: {
-    category?: string;
-    search?: string;
-    page?: number;
-    limit?: number;
-  }) {
-    const queryString = params ? `?${new URLSearchParams(params as any)}` : '';
-    return this.request<any>(`/marketplace/products${queryString}`);
-  }
-
-  async getProductDetails(id: number) {
-    return this.request<any>(`/marketplace/products/${id}`);
-  }
-
-  // Toll
-  async scanTollQR(qrData: string) {
-    return this.request<any>('/toll/scan', {
-      method: 'POST',
-      body: JSON.stringify({ qrData }),
-    });
-  }
-
-  async payToll(paymentData: {
-    tollGateId: string;
-    amount: number;
-    paymentMethodId: string;
-  }) {
-    return this.request<any>('/toll/pay', {
-      method: 'POST',
-      body: JSON.stringify(paymentData),
-    });
-  }
-
-  // Orders
-  async getOrders(params?: {
-    status?: string;
-    page?: number;
-    limit?: number;
-  }) {
-    const queryString = params ? `?${new URLSearchParams(params as any)}` : '';
-    return this.request<any>(`/orders${queryString}`);
-  }
-
-  async getOrderDetails(id: string) {
-    return this.request<any>(`/orders/${id}`);
+  async updateUserProfile(userId: string, userData: any): Promise<void> {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        ...userData,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      throw new Error(`Failed to update user profile: ${error.message}`);
+    }
   }
 }
 
-export default new ApiService();
+export default ApiService.getInstance();
