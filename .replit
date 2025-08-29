@@ -1,3 +1,4 @@
+
 modules = ["nodejs-20", "web", "nix"]
 run = "npm run dev"
 
@@ -5,4 +6,4 @@ run = "npm run dev"
 channel = "stable-25_05"
 
 [deployment]
-run = ["sh", "-c", "npm run dev"]
+run = ["sh", "-c", "npm run build:web && npm run start --workspace=@brillprime/web"]
