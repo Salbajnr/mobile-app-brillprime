@@ -11,6 +11,7 @@
     "dev:admin": "npm run dev --workspace=@brillprime/admin",
     "dev:web": "npm run dev --workspace=@brillprime/web",
     "dev:mobile": "npm run start --workspace=@brillprime/mobile",
+    "dev:api": "npm run dev --workspace=@brillprime/api",
     "build": "npm run build --workspaces --if-present",
     "build:admin": "npm run build --workspace=@brillprime/admin",
     "build:web": "npm run build --workspace=@brillprime/web",

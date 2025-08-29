@@ -23,3 +23,16 @@ args = "npm install --workspaces"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev:web"
+
+[[workflows.workflow]]
+name = "API Server"
+author = 47010545
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install --workspaces"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev:api"
