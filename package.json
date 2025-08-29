@@ -11,13 +11,14 @@
     "dev:admin": "npm run dev --workspace=@brillprime/admin",
     "dev:web": "npm run dev --workspace=@brillprime/web",
     "dev:mobile": "npm run start --workspace=@brillprime/mobile",
-    "build": "npm run build --workspaces",
+    "build": "npm run build --workspaces --if-present",
     "build:admin": "npm run build --workspace=@brillprime/admin",
     "build:web": "npm run build --workspace=@brillprime/web",
     "build:shared": "npm run build --workspace=@brillprime/shared",
-    "lint": "npm run lint --workspaces",
-    "typecheck": "npm run typecheck --workspaces",
-    "install:all": "npm install --workspaces"
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "install:all": "npm install --workspaces",
+    "clean": "rm -rf packages/*/node_modules packages/*/.next packages/*/dist"
   },
   "devDependencies": {
     "@types/node": "^20",

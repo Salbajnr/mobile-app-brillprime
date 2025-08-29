@@ -22,4 +22,4 @@ args = "npm install --workspaces"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev --workspace=@brillprime/web"
+args = "npm run dev:web"
