@@ -7,3 +7,19 @@ channel = "stable-25_05"
 
 [deployment]
 run = ["sh", "-c", "npm run build:web && npm run start --workspace=@brillprime/web"]
+
+[workflows]
+runButton = "Development"
+
+[[workflows.workflow]]
+name = "Development"
+author = 47010545
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install --workspaces"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev --workspace=@brillprime/web"

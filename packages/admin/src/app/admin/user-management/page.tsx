@@ -1,210 +1,251 @@
 
-'use client';
-
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { getAllUsers } from '@brillprime/shared';
+import { Badge } from '@brillprime/shared/ui/badge';
+import { Button } from '@brillprime/shared/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@brillprime/shared/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@brillprime/shared/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@brillprime/shared/ui/tabs';
+import { MoreHorizontal, PlusCircle, Eye, UserCheck, UserX } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
-import Image from 'next/image';
-import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
-import { useEffect, useState } from 'react';
-import type { SelectUser } from '@/lib/db/schema';
-import { UserForm } from './user-form';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+} from '@brillprime/shared/ui/dropdown-menu';
 
-const getStatusBadgeVariant = (status: boolean) => {
-  switch (status) {
-    case true:
-      return 'success';
-    case false:
-      return 'secondary';
-    default:
-      return 'outline';
-  }
-};
+interface PageProps {
+  searchParams: Promise<{ page?: string; role?: string }>;
+}
 
-const getKycBadgeVariant = (status: boolean) => {
-  switch (status) {
-    case true:
-      return 'success';
-    case false:
-      return 'warning';
-    default:
-      return 'outline';
-  }
-};
+export default async function UserManagement({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const page = parseInt(params.page || '1');
+  const roleFilter = params.role;
 
-export default function AdminUserManagementPage() {
-  const [userList, setUserList] = useState<SelectUser[]>([]);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<SelectUser | null>(null);
+  const { users, totalCount, totalPages } = await getAllUsers(page, 20);
 
-  async function fetchUsers() {
-    const result = await db.select().from(users);
-    setUserList(result);
-  }
+  // Filter users by role if specified
+  const filteredUsers = roleFilter 
+    ? users.filter(user => user.role === roleFilter)
+    : users;
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const handleFormSubmit = () => {
-    setIsFormOpen(false);
-    setSelectedUser(null);
-    fetchUsers(); // Refetch users after submission
+  const getRoleBadgeVariant = (role: string) => {
+    switch (role) {
+      case 'ADMIN': return 'destructive';
+      case 'MERCHANT': return 'default';
+      case 'DRIVER': return 'secondary';
+      case 'CONSUMER': return 'outline';
+      default: return 'outline';
+    }
   };
 
-  const handleEdit = (user: SelectUser) => {
-    setSelectedUser(user);
-    setIsFormOpen(true);
+  const getStatusBadgeVariant = (isActive: boolean, isVerified: boolean) => {
+    if (!isActive) return 'destructive';
+    if (isVerified) return 'default';
+    return 'secondary';
   };
-  
-  const handleAdd = () => {
-    setSelectedUser(null);
-    setIsFormOpen(true);
+
+  const getStatusText = (isActive: boolean, isVerified: boolean) => {
+    if (!isActive) return 'Inactive';
+    if (isVerified) return 'Verified';
+    return 'Pending';
   };
 
   return (
-    <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-    <Tabs defaultValue="all">
-      <div className="flex items-center">
-        <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="consumer">Consumers</TabsTrigger>
-          <TabsTrigger value="merchant">Merchants</TabsTrigger>
-          <TabsTrigger value="driver">Drivers</TabsTrigger>
-        </TabsList>
-        <div className="ml-auto flex items-center gap-2">
-          <Button size="sm" variant="outline">
-            Export
-          </Button>
-          <DialogTrigger asChild>
-            <Button size="sm" onClick={handleAdd}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add User
-            </Button>
-          </DialogTrigger>
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">User Management</h2>
+          <p className="text-muted-foreground">Manage and monitor all platform users</p>
         </div>
+        <Button>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Add User
+        </Button>
       </div>
-      <TabsContent value="all">
-        <Card className="rounded-2xl shadow-sm">
-          <CardHeader>
-            <CardTitle>All Users</CardTitle>
-            <CardDescription>
-              A list of all users on the platform.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>KYC Status</TableHead>
-                  <TableHead>Last Login</TableHead>
-                  <TableHead>
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {userList.map((user) => (
-                  <TableRow key={user.email}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Image
-                          src={user.profilePicture || `https://picsum.photos/40/40?random=${user.id}`}
-                          alt={user.fullName || 'User avatar'}
-                          width={40}
-                          height={40}
-                          className="rounded-full"
-                          data-ai-hint="user avatar"
-                        />
-                        <div>
-                          <div className="font-medium">{user.fullName}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {user.email}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{user.role}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(user.isActive) as any}>
-                        {user.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getKycBadgeVariant(user.emailVerified) as any}>
-                        {user.emailVerified ? 'Verified' : 'Pending'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => handleEdit(user)}>Edit User</DropdownMenuItem>
-                          <DropdownMenuItem>Suspend User</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+
+      <Tabs defaultValue="all" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="all">All Users ({totalCount})</TabsTrigger>
+          <TabsTrigger value="CONSUMER">Consumers</TabsTrigger>
+          <TabsTrigger value="MERCHANT">Merchants</TabsTrigger>
+          <TabsTrigger value="DRIVER">Drivers</TabsTrigger>
+          <TabsTrigger value="ADMIN">Admins</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="all" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>All Users</CardTitle>
+              <CardDescription>
+                Complete list of registered users across all roles
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Last Login</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </TabsContent>
-    </Tabs>
-    <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{selectedUser ? 'Edit User' : 'Add New User'}</DialogTitle>
-        </DialogHeader>
-        <UserForm currentUser={selectedUser} onSubmit={handleFormSubmit} />
-      </DialogContent>
-    </Dialog>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{user.fullName}</span>
+                          <span className="text-sm text-muted-foreground">{user.email}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getRoleBadgeVariant(user.role || 'CONSUMER')}>
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusBadgeVariant(user.isActive || false, user.isVerified || false)}>
+                          {getStatusText(user.isActive || false, user.isVerified || false)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {user.lastLoginAt 
+                          ? new Date(user.lastLoginAt).toLocaleDateString()
+                          : 'Never'
+                        }
+                      </TableCell>
+                      <TableCell>
+                        {new Date(user.createdAt!).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <UserCheck className="mr-2 h-4 w-4" />
+                              {user.isVerified ? 'Unverify' : 'Verify'} User
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <UserX className="mr-2 h-4 w-4" />
+                              {user.isActive ? 'Deactivate' : 'Activate'} User
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Showing page {page} of {totalPages} ({totalCount} total users)
+                  </p>
+                  <div className="flex space-x-2">
+                    {page > 1 && (
+                      <Button variant="outline" size="sm">
+                        Previous
+                      </Button>
+                    )}
+                    {page < totalPages && (
+                      <Button variant="outline" size="sm">
+                        Next
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Similar content for other tabs */}
+        {['CONSUMER', 'MERCHANT', 'DRIVER', 'ADMIN'].map(role => (
+          <TabsContent key={role} value={role} className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>{role.charAt(0) + role.slice(1).toLowerCase()}s</CardTitle>
+                <CardDescription>
+                  Users with {role.toLowerCase()} role
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Last Login</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.filter(user => user.role === role).map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{user.fullName}</span>
+                            <span className="text-sm text-muted-foreground">{user.email}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusBadgeVariant(user.isActive || false, user.isVerified || false)}>
+                            {getStatusText(user.isActive || false, user.isVerified || false)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {user.lastLoginAt 
+                            ? new Date(user.lastLoginAt).toLocaleDateString()
+                            : 'Never'
+                          }
+                        </TableCell>
+                        <TableCell>
+                          {new Date(user.createdAt!).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <UserCheck className="mr-2 h-4 w-4" />
+                                {user.isVerified ? 'Unverify' : 'Verify'} User
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
+      </Tabs>
+    </div>
   );
 }
